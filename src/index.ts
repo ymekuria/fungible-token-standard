@@ -1,3 +1,2 @@
-import { Add } from './Add.js';
-
-export { Add };
+export * from './FungibleToken.js';
+export * from './FungibleTokenAdmin.js';
