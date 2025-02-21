@@ -4,7 +4,6 @@ import {
   assert,
   Bool,
   DeployArgs,
-  Field,
   Int64,
   method,
   Permissions,
@@ -182,7 +181,7 @@ export class FungibleToken extends TokenContractV2 {
     from
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-    circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
+    circulationUpdate.balanceChange = Int64.fromUnsigned(amount).negV2();
     this.emitEvent('Burn', new BurnEvent({ from, amount }));
     return accountUpdate;
   }
