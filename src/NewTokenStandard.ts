@@ -18,11 +18,6 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import {
-  FungibleTokenAdmin,
-  FungibleTokenAdminBase,
-} from './FungibleTokenAdmin.js';
-
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   /** The token symbol. */
   symbol: string;
@@ -37,7 +32,6 @@ interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
 export const FungibleTokenErrors = {
   noAdminKey: 'could not fetch admin contract key',
   noPermissionToChangeAdmin: 'Not allowed to change admin contract',
-  tokenPaused: 'Token is currently paused',
   noPermissionToMint: 'Not allowed to mint tokens',
   noPermissionToPause: 'Not allowed to pause token',
   noPermissionToResume: 'Not allowed to resume token',
@@ -50,30 +44,30 @@ export const FungibleTokenErrors = {
 };
 
 export class FungibleToken extends TokenContractV2 {
-  @state(UInt8)
-  decimals = State<UInt8>();
-  @state(PublicKey)
-  admin = State<PublicKey>();
-  @state(Bool)
-  paused = State<Bool>();
+  @state(UInt8) decimals = State<UInt8>();
+  @state(PublicKey) admin = State<PublicKey>();
+  @state(Bool) canMint = State(Bool(true));
+  @state(Bool) canChangeAdmin = State(Bool(true));
+  @state(Bool) canChangeVerificationKey = State(Bool(true));
 
   // This defines the type of the contract that is used to control access to administrative actions.
   // If you want to have a custom contract, overwrite this by setting FungibleToken.AdminContract to
   // your own implementation of FungibleTokenAdminBase.
-  static AdminContract: new (...args: any) => FungibleTokenAdminBase =
-    FungibleTokenAdmin;
 
   readonly events = {
     SetAdmin: SetAdminEvent,
-    Pause: PauseEvent,
     Mint: MintEvent,
     Burn: BurnEvent,
     BalanceChange: BalanceChangeEvent,
   };
 
+  private async ensureAdminSignature() {
+    const admin = this.admin.getAndRequireEquals();
+    return AccountUpdate.createSigned(admin);
+  }
+
   async deploy(props: FungibleTokenDeployProps) {
     await super.deploy(props);
-    this.paused.set(Bool(true));
     this.account.zkappUri.set(props.src);
     this.account.tokenSymbol.set(props.symbol);
 
@@ -92,9 +86,9 @@ export class FungibleToken extends TokenContractV2 {
    */
   @method
   async updateVerificationKey(vk: VerificationKey) {
-    const adminContract = await this.getAdminContract();
+    this.ensureAdminSignature();
     const canChangeVerificationKey =
-      await adminContract.canChangeVerificationKey(vk);
+      this.canChangeVerificationKey.getAndRequireEquals();
     canChangeVerificationKey.assertTrue(
       FungibleTokenErrors.noPermissionToChangeAdmin
     );
@@ -104,17 +98,13 @@ export class FungibleToken extends TokenContractV2 {
   /** Initializes the account for tracking total circulation.
    * @argument {PublicKey} admin - public key where the admin contract is deployed
    * @argument {UInt8} decimals - number of decimals for the token
-   * @argument {Bool} startPaused - if set to `Bool(true), the contract will start in a mode where token minting and transfers are paused. This should be used for non-atomic deployments
    */
   @method
-  async initialize(admin: PublicKey, decimals: UInt8, startPaused: Bool) {
+  async initialize(admin: PublicKey, decimals: UInt8) {
     this.account.provedState.requireEquals(Bool(false));
 
     this.admin.set(admin);
     this.decimals.set(decimals);
-    this.paused.set(Bool(false));
-
-    this.paused.set(startPaused);
 
     const accountUpdate = AccountUpdate.createSigned(
       this.address,
@@ -127,62 +117,45 @@ export class FungibleToken extends TokenContractV2 {
     accountUpdate.account.permissions.set(permissions);
   }
 
-  public async getAdminContract(): Promise<FungibleTokenAdminBase> {
-    const admin = await Provable.witnessAsync(PublicKey, async () => {
-      let pk = await this.admin.fetch();
-      assert(pk !== undefined, FungibleTokenErrors.noAdminKey);
-      return pk;
-    });
-    this.admin.requireEquals(admin);
-    return new FungibleToken.AdminContract(admin);
-  }
-
   @method
   async setAdmin(admin: PublicKey) {
-    const adminContract = await this.getAdminContract();
-    const canChangeAdmin = await adminContract.canChangeAdmin(admin);
+    this.ensureAdminSignature();
+    const canChangeAdmin = this.canChangeAdmin.getAndRequireEquals();
     canChangeAdmin.assertTrue(FungibleTokenErrors.noPermissionToChangeAdmin);
+
     this.admin.set(admin);
     this.emitEvent('SetAdmin', new SetAdminEvent({ adminKey: admin }));
   }
 
-  // try to create a new account update with the admin's PK
-  // pass it to `this.internal.mint({});
-  // require.signature from the admin!
-
-  // leverage createIf for sure for the new config design
   @method.returns(AccountUpdate)
   async mint(recipient: PublicKey, amount: UInt64): Promise<AccountUpdate> {
-    this.paused
-      .getAndRequireEquals()
-      .assertFalse(FungibleTokenErrors.tokenPaused);
+    this.ensureAdminSignature();
 
-    // const accountUpdate = AccountUpdate.create(this.admin.getAndRequireEquals());
     const accountUpdate = this.internal.mint({ address: recipient, amount });
-    // accountUpdate.to
     accountUpdate.body.useFullCommitment;
-    const adminContract = await this.getAdminContract();
-    // accountUpdate.publicKey = this.admin.getAndRequireEquals();
-    const canMint = await adminContract.canMint(accountUpdate);
+
+    const canMint = this.canMint.getAndRequireEquals();
     canMint.assertTrue(FungibleTokenErrors.noPermissionToMint);
+
     recipient
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
+
     this.approve(accountUpdate);
+
     this.emitEvent('Mint', new MintEvent({ recipient, amount }));
+
     const circulationUpdate = AccountUpdate.create(
       this.address,
       this.deriveTokenId()
     );
+
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount);
     return accountUpdate;
   }
 
   @method.returns(AccountUpdate)
   async burn(from: PublicKey, amount: UInt64): Promise<AccountUpdate> {
-    this.paused
-      .getAndRequireEquals()
-      .assertFalse(FungibleTokenErrors.tokenPaused);
     const accountUpdate = this.internal.burn({ address: from, amount });
     const circulationUpdate = AccountUpdate.create(
       this.address,
@@ -197,28 +170,7 @@ export class FungibleToken extends TokenContractV2 {
   }
 
   @method
-  async pause() {
-    const adminContract = await this.getAdminContract();
-    const canPause = await adminContract.canPause();
-    canPause.assertTrue(FungibleTokenErrors.noPermissionToPause);
-    this.paused.set(Bool(true));
-    this.emitEvent('Pause', new PauseEvent({ isPaused: Bool(true) }));
-  }
-
-  @method
-  async resume() {
-    const adminContract = await this.getAdminContract();
-    const canResume = await adminContract.canResume();
-    canResume.assertTrue(FungibleTokenErrors.noPermissionToResume);
-    this.paused.set(Bool(false));
-    this.emitEvent('Pause', new PauseEvent({ isPaused: Bool(false) }));
-  }
-
-  @method
   async transfer(from: PublicKey, to: PublicKey, amount: UInt64) {
-    this.paused
-      .getAndRequireEquals()
-      .assertFalse(FungibleTokenErrors.tokenPaused);
     from
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
@@ -256,9 +208,6 @@ export class FungibleToken extends TokenContractV2 {
    */
   @method
   async approveBase(updates: AccountUpdateForest): Promise<void> {
-    this.paused
-      .getAndRequireEquals()
-      .assertFalse(FungibleTokenErrors.tokenPaused);
     let totalBalance = Int64.from(0);
     this.forEachUpdate(updates, (update, usesToken) => {
       // Make sure that the account permissions are not changed
@@ -310,16 +259,29 @@ export class FungibleToken extends TokenContractV2 {
   async getDecimals(): Promise<UInt8> {
     return this.decimals.getAndRequireEquals();
   }
+
+  //! remove state -> maybe custom logic!
+  @method async switchChangeVerificationKey(flag: Bool) {
+    await this.ensureAdminSignature();
+    this.canChangeVerificationKey.set(flag);
+  }
+
+  //! add check for toggle value if exists
+  @method async switchCanMint(flag: Bool) {
+    await this.ensureAdminSignature();
+    this.canMint.set(flag);
+  }
+
+  //! remove state -> maybe custom logic!
+  @method async switchChangeAdmin(flag: Bool) {
+    await this.ensureAdminSignature();
+    this.canChangeAdmin.set(flag);
+  }
 }
 
 export class SetAdminEvent extends Struct({
   adminKey: PublicKey,
 }) {}
-
-export class PauseEvent extends Struct({
-  isPaused: Bool,
-}) {}
-
 export class MintEvent extends Struct({
   recipient: PublicKey,
   amount: UInt64,
