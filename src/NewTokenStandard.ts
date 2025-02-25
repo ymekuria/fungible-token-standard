@@ -20,6 +20,15 @@ import {
 } from 'o1js';
 import { MintConfig, MintParams, DEFAULT_MINT_CONFIG } from './configs.js';
 
+export {
+  FungibleTokenErrors,
+  FungibleToken,
+  SetAdminEvent,
+  MintEvent,
+  BurnEvent,
+  BalanceChangeEvent,
+};
+
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   /** The token symbol. */
   symbol: string;
@@ -31,7 +40,7 @@ interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   allowUpdates: boolean;
 }
 
-export const FungibleTokenErrors = {
+const FungibleTokenErrors = {
   noAdminKey: 'could not fetch admin contract key',
   noPermissionToChangeAdmin: 'Not allowed to change admin contract',
   noPermissionToMint: 'Not allowed to mint tokens',
@@ -45,7 +54,7 @@ export const FungibleTokenErrors = {
   unbalancedTransaction: 'Transaction is unbalanced',
 };
 
-export class FungibleToken extends TokenContractV2 {
+class FungibleToken extends TokenContractV2 {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
   @state(MintConfig) mintConfig = State<MintConfig>();
@@ -318,20 +327,20 @@ export class FungibleToken extends TokenContractV2 {
   }
 }
 
-export class SetAdminEvent extends Struct({
+class SetAdminEvent extends Struct({
   adminKey: PublicKey,
 }) {}
-export class MintEvent extends Struct({
+class MintEvent extends Struct({
   recipient: PublicKey,
   amount: UInt64,
 }) {}
 
-export class BurnEvent extends Struct({
+class BurnEvent extends Struct({
   from: PublicKey,
   amount: UInt64,
 }) {}
 
-export class BalanceChangeEvent extends Struct({
+class BalanceChangeEvent extends Struct({
   address: PublicKey,
   amount: Int64,
 }) {}
