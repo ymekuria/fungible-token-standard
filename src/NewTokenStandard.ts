@@ -90,18 +90,6 @@ class FungibleToken extends TokenContractV2 {
     });
   }
 
-  /** Update the verification key.
-   * This will only work when `allowUpdates` has been set to `true` during deployment.
-   */
-  @method
-  async updateVerificationKey(vk: VerificationKey) {
-    const canChangeVerificationKey = await this.canChangeVerificationKey(vk);
-    canChangeVerificationKey.assertTrue(
-      FungibleTokenErrors.noPermissionToChangeAdmin
-    );
-    this.account.verificationKey.set(vk);
-  }
-
   /** Initializes the account for tracking total circulation.
    * @argument {PublicKey} admin - public key where the admin contract is deployed
    * @argument {UInt8} decimals - number of decimals for the token
@@ -125,6 +113,18 @@ class FungibleToken extends TokenContractV2 {
     permissions.send = Permissions.none();
     permissions.setPermissions = Permissions.impossible();
     accountUpdate.account.permissions.set(permissions);
+  }
+
+  /** Update the verification key.
+   * This will only work when `allowUpdates` has been set to `true` during deployment.
+   */
+  @method
+  async updateVerificationKey(vk: VerificationKey) {
+    const canChangeVerificationKey = await this.canChangeVerificationKey(vk);
+    canChangeVerificationKey.assertTrue(
+      FungibleTokenErrors.noPermissionToChangeAdmin
+    );
+    this.account.verificationKey.set(vk);
   }
 
   @method
@@ -297,6 +297,12 @@ class FungibleToken extends TokenContractV2 {
     return Bool(true);
   }
 
+  //! a config can be added to enforce additional conditions when updating the admin public key.
+  private async canChangeAdmin(_admin: PublicKey) {
+    await this.ensureAdminSignature(Bool(true));
+    return Bool(true);
+  }
+
   private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
     const mintConfig = this.mintConfig.getAndRequireEquals();
     const { fixedAmount, minAmount, maxAmount } = mintParams;
@@ -318,12 +324,6 @@ class FungibleToken extends TokenContractV2 {
       Bool,
       [isFixed, isInRange]
     );
-  }
-
-  //! a config can be added to enforce additional conditions when updating the admin public key.
-  private async canChangeAdmin(_admin: PublicKey) {
-    await this.ensureAdminSignature(Bool(true));
-    return Bool(true);
   }
 }
 
