@@ -48,8 +48,6 @@ export const FungibleTokenErrors = {
 export class FungibleToken extends TokenContractV2 {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
-  @state(Bool) canChangeAdmin = State(Bool(true));
-  @state(Bool) canChangeVerificationKey = State(Bool(true));
   @state(MintConfig) mintConfig = State<MintConfig>();
   //TODO add state for `mintParams` -> requires data packing!
 
@@ -88,9 +86,7 @@ export class FungibleToken extends TokenContractV2 {
    */
   @method
   async updateVerificationKey(vk: VerificationKey) {
-    this.ensureAdminSignature(Bool(true));
-    const canChangeVerificationKey =
-      this.canChangeVerificationKey.getAndRequireEquals();
+    const canChangeVerificationKey = await this.canChangeVerificationKey(vk);
     canChangeVerificationKey.assertTrue(
       FungibleTokenErrors.noPermissionToChangeAdmin
     );
@@ -124,8 +120,7 @@ export class FungibleToken extends TokenContractV2 {
 
   @method
   async setAdmin(admin: PublicKey) {
-    this.ensureAdminSignature(Bool(true));
-    const canChangeAdmin = this.canChangeAdmin.getAndRequireEquals();
+    const canChangeAdmin = await this.canChangeAdmin(admin);
     canChangeAdmin.assertTrue(FungibleTokenErrors.noPermissionToChangeAdmin);
 
     this.admin.set(admin);
@@ -287,11 +282,10 @@ export class FungibleToken extends TokenContractV2 {
     this.mintConfig.set(mintConfig);
   }
 
-  //-------------------------------------------------
-  //! remove state -> maybe custom logic!
-  @method async switchChangeVerificationKey(flag: Bool) {
+  //! a config can be added to enforce additional conditions when updating the verification key.
+  private async canChangeVerificationKey(_vk: VerificationKey): Promise<Bool> {
     await this.ensureAdminSignature(Bool(true));
-    this.canChangeVerificationKey.set(flag);
+    return Bool(true);
   }
 
   private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
@@ -317,10 +311,10 @@ export class FungibleToken extends TokenContractV2 {
     );
   }
 
-  //! remove state -> maybe custom logic!
-  @method async switchChangeAdmin(flag: Bool) {
+  //! a config can be added to enforce additional conditions when updating the admin public key.
+  private async canChangeAdmin(_admin: PublicKey) {
     await this.ensureAdminSignature(Bool(true));
-    this.canChangeAdmin.set(flag);
+    return Bool(true);
   }
 }
 
