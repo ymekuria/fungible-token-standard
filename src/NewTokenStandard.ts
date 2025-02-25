@@ -18,6 +18,8 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
+import { MintConfig, MintParams, DEFAULT_MINT_CONFIG } from './configs.js';
+
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   /** The token symbol. */
   symbol: string;
@@ -46,13 +48,10 @@ export const FungibleTokenErrors = {
 export class FungibleToken extends TokenContractV2 {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
-  @state(Bool) canMint = State(Bool(true));
   @state(Bool) canChangeAdmin = State(Bool(true));
   @state(Bool) canChangeVerificationKey = State(Bool(true));
-
-  // This defines the type of the contract that is used to control access to administrative actions.
-  // If you want to have a custom contract, overwrite this by setting FungibleToken.AdminContract to
-  // your own implementation of FungibleTokenAdminBase.
+  @state(MintConfig) mintConfig = State<MintConfig>();
+  //TODO add state for `mintParams` -> requires data packing!
 
   readonly events = {
     SetAdmin: SetAdminEvent,
@@ -61,9 +60,12 @@ export class FungibleToken extends TokenContractV2 {
     BalanceChange: BalanceChangeEvent,
   };
 
-  private async ensureAdminSignature() {
+  private async ensureAdminSignature(condition: Bool) {
     const admin = this.admin.getAndRequireEquals();
-    return AccountUpdate.createSigned(admin);
+    const accountUpdate = AccountUpdate.createIf(condition, admin);
+    accountUpdate.requireSignature();
+
+    return accountUpdate;
   }
 
   async deploy(props: FungibleTokenDeployProps) {
@@ -86,7 +88,7 @@ export class FungibleToken extends TokenContractV2 {
    */
   @method
   async updateVerificationKey(vk: VerificationKey) {
-    this.ensureAdminSignature();
+    this.ensureAdminSignature(Bool(true));
     const canChangeVerificationKey =
       this.canChangeVerificationKey.getAndRequireEquals();
     canChangeVerificationKey.assertTrue(
@@ -106,6 +108,9 @@ export class FungibleToken extends TokenContractV2 {
     this.admin.set(admin);
     this.decimals.set(decimals);
 
+    //! should be maintained as on-chain state and updated exclusively by the admin
+    this.mintConfig.set(DEFAULT_MINT_CONFIG);
+
     const accountUpdate = AccountUpdate.createSigned(
       this.address,
       this.deriveTokenId()
@@ -119,7 +124,7 @@ export class FungibleToken extends TokenContractV2 {
 
   @method
   async setAdmin(admin: PublicKey) {
-    this.ensureAdminSignature();
+    this.ensureAdminSignature(Bool(true));
     const canChangeAdmin = this.canChangeAdmin.getAndRequireEquals();
     canChangeAdmin.assertTrue(FungibleTokenErrors.noPermissionToChangeAdmin);
 
@@ -129,12 +134,19 @@ export class FungibleToken extends TokenContractV2 {
 
   @method.returns(AccountUpdate)
   async mint(recipient: PublicKey, amount: UInt64): Promise<AccountUpdate> {
-    this.ensureAdminSignature();
-
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
 
-    const canMint = this.canMint.getAndRequireEquals();
+    //! mint parameters are hardcoded here!
+    // In a production environment, these parameters should be stored on-chain
+    // and updated exclusively by the admin.
+    const mintParams = new MintParams({
+      fixedAmount: UInt64.from(200),
+      minAmount: UInt64.from(0),
+      maxAmount: UInt64.from(1000),
+    });
+
+    const canMint = await this.canMint(accountUpdate, mintParams);
     canMint.assertTrue(FungibleTokenErrors.noPermissionToMint);
 
     recipient
@@ -260,21 +272,54 @@ export class FungibleToken extends TokenContractV2 {
     return this.decimals.getAndRequireEquals();
   }
 
+  @method
+  async updateMintConfig(mintConfig: MintConfig) {
+    //! maybe enforce that sender is admin instead of approving with an admin signature
+    this.ensureAdminSignature(Bool(true));
+    const { fixedAmountMint, rangeMint } = mintConfig;
+    fixedAmountMint
+      .toField()
+      .add(rangeMint.toField())
+      .assertEquals(
+        1,
+        'Exactly one of fixed amount mint or range mint must be enabled!'
+      );
+    this.mintConfig.set(mintConfig);
+  }
+
+  //-------------------------------------------------
   //! remove state -> maybe custom logic!
   @method async switchChangeVerificationKey(flag: Bool) {
-    await this.ensureAdminSignature();
+    await this.ensureAdminSignature(Bool(true));
     this.canChangeVerificationKey.set(flag);
   }
 
-  //! add check for toggle value if exists
-  @method async switchCanMint(flag: Bool) {
-    await this.ensureAdminSignature();
-    this.canMint.set(flag);
+  private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
+    const mintConfig = this.mintConfig.getAndRequireEquals();
+    const { fixedAmount, minAmount, maxAmount } = mintParams;
+
+    minAmount.assertLessThan(maxAmount, 'Invalid mint range!');
+
+    await this.ensureAdminSignature(mintConfig.publicMint.not());
+
+    const magnitude = accountUpdate.body.balanceChange.magnitude;
+
+    const isFixed = magnitude.equals(fixedAmount);
+
+    const lowerBound = magnitude.greaterThanOrEqual(minAmount);
+    const upperBound = magnitude.lessThanOrEqual(maxAmount);
+    const isInRange = lowerBound.and(upperBound);
+
+    return Provable.switch(
+      [mintConfig.fixedAmountMint, mintConfig.rangeMint],
+      Bool,
+      [isFixed, isInRange]
+    );
   }
 
   //! remove state -> maybe custom logic!
   @method async switchChangeAdmin(flag: Bool) {
-    await this.ensureAdminSignature();
+    await this.ensureAdminSignature(Bool(true));
     this.canChangeAdmin.set(flag);
   }
 }
