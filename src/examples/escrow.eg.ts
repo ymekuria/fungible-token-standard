@@ -46,7 +46,7 @@ export class TokenEscrow extends SmartContract {
     const token = new FungibleToken(this.tokenAddress.getAndRequireEquals());
     token.deriveTokenId().assertEquals(this.tokenId);
 
-    const sender = this.sender.getUnconstrainedV2();
+    const sender = this.sender.getUnconstrained();
     const senderUpdate = AccountUpdate.createSigned(sender);
     senderUpdate.body.useFullCommitment = Bool(true);
 
@@ -61,7 +61,7 @@ export class TokenEscrow extends SmartContract {
     const token = new FungibleToken(this.tokenAddress.getAndRequireEquals());
     token.deriveTokenId().assertEquals(this.tokenId);
 
-    const sender = this.sender.getUnconstrainedV2();
+    const sender = this.sender.getUnconstrained();
     const senderUpdate = AccountUpdate.createSigned(sender);
     senderUpdate.body.useFullCommitment = Bool(true);
     this.owner.getAndRequireEquals().assertEquals(sender);

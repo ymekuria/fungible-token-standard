@@ -12,7 +12,7 @@ import {
   State,
   state,
   Struct,
-  TokenContractV2,
+  TokenContract,
   Types,
   UInt64,
   UInt8,
@@ -54,7 +54,7 @@ const FungibleTokenErrors = {
   unbalancedTransaction: 'Transaction is unbalanced',
 };
 
-class FungibleToken extends TokenContractV2 {
+class FungibleToken extends TokenContract {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
   @state(MintConfig) mintConfig = State<MintConfig>();
@@ -180,7 +180,7 @@ class FungibleToken extends TokenContractV2 {
     from
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-    circulationUpdate.balanceChange = Int64.fromUnsigned(amount).negV2();
+    circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
     this.emitEvent('Burn', new BurnEvent({ from, amount }));
     return accountUpdate;
   }
@@ -247,7 +247,7 @@ class FungibleToken extends TokenContractV2 {
         totalBalance.add(update.balanceChange),
         totalBalance
       );
-      totalBalance.isPositiveV2().assertFalse(FungibleTokenErrors.flashMinting);
+      totalBalance.isPositive().assertFalse(FungibleTokenErrors.flashMinting);
     });
     totalBalance.assertEquals(
       Int64.zero,

@@ -546,7 +546,7 @@ describe('token integration', () => {
         sender,
         tokenAContract.deriveTokenId()
       );
-      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).negV2();
+      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).neg();
 
       const updateReceive = AccountUpdate.create(
         receiver,
@@ -585,7 +585,7 @@ describe('token integration', () => {
         sender,
         tokenAContract.deriveTokenId()
       );
-      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).negV2();
+      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).neg();
       const updateReceive = AccountUpdate.create(
         receiver,
         tokenAContract.deriveTokenId()
@@ -616,7 +616,7 @@ describe('token integration', () => {
         sender,
         tokenAContract.deriveTokenId()
       );
-      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).negV2();
+      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).neg();
       const updateReceive = AccountUpdate.create(
         receiver,
         tokenAContract.deriveTokenId()
@@ -711,7 +711,7 @@ describe('token integration', () => {
         tokenA,
         tokenAContract.deriveTokenId()
       );
-      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).negV2();
+      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).neg();
       const updateReceive = AccountUpdate.create(
         receiver,
         tokenAContract.deriveTokenId()
@@ -743,7 +743,7 @@ describe('token integration', () => {
         sender,
         tokenAContract.deriveTokenId()
       );
-      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).negV2();
+      updateSend.balanceChange = Int64.fromUnsigned(sendAmount).neg();
       const updateReceive = AccountUpdate.create(
         tokenA,
         tokenAContract.deriveTokenId()
@@ -943,7 +943,7 @@ describe('token integration', () => {
       const tokenId = tokenAContract.deriveTokenId();
 
       const updateWithdraw = AccountUpdate.createSigned(sender, tokenId);
-      updateWithdraw.balanceChange = Int64.fromUnsigned(depositAmount).negV2();
+      updateWithdraw.balanceChange = Int64.fromUnsigned(depositAmount).neg();
 
       const updateDeposit = await thirdPartyAContract.deposit(depositAmount);
       updateDeposit.body.mayUseToken =
@@ -1247,7 +1247,7 @@ export default class ThirdParty extends SmartContract {
       this.address,
       this.tokenOwner.deriveTokenId()
     );
-    accountUpdate.balanceChange = Int64.fromUnsigned(amount).negV2();
+    accountUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
     accountUpdate.requireSignature();
     return accountUpdate;
   }
