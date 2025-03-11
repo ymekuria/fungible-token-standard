@@ -4,6 +4,7 @@ import {
   assert,
   Bool,
   DeployArgs,
+  Field,
   Int64,
   method,
   Permissions,
@@ -19,6 +20,7 @@ import {
   VerificationKey,
 } from 'o1js';
 import { MintConfig, MintParams, DEFAULT_MINT_CONFIG } from './configs.js';
+import { SideloadedProof } from './side-loaded/program.eg.js';
 
 export {
   FungibleTokenErrors,
@@ -58,6 +60,8 @@ class FungibleToken extends TokenContract {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
   @state(MintConfig) mintConfig = State<MintConfig>();
+  //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
+  @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
   //TODO add state for `mintParams` -> requires data packing!
 
   readonly events = {
@@ -127,6 +131,15 @@ class FungibleToken extends TokenContract {
     this.account.verificationKey.set(vk);
   }
 
+  /** Update the hash of the side-loaded verification key.
+   * @note Evaluate whether different methods require separate verification key hashes in future iterations.
+   */
+  @method
+  async updateSideLoadedVKeyHash(vKey: VerificationKey) {
+    await this.ensureAdminSignature(Bool(true));
+    this.vKey.set(vKey.hash);
+  }
+
   @method
   async setAdmin(admin: PublicKey) {
     const canChangeAdmin = await this.canChangeAdmin(admin);
@@ -137,7 +150,12 @@ class FungibleToken extends TokenContract {
   }
 
   @method.returns(AccountUpdate)
-  async mint(recipient: PublicKey, amount: UInt64): Promise<AccountUpdate> {
+  async mint(
+    recipient: PublicKey,
+    amount: UInt64,
+    proof: SideloadedProof,
+    vk: VerificationKey // provide the full verification key since only the hash is stored.
+  ): Promise<AccountUpdate> {
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
 
@@ -150,7 +168,10 @@ class FungibleToken extends TokenContract {
       maxAmount: UInt64.from(1000),
     });
 
-    const canMint = await this.canMint(accountUpdate, mintParams);
+    const { canMint, shouldVerifyProof } = await this.canMint(
+      accountUpdate,
+      mintParams
+    );
     canMint.assertTrue(FungibleTokenErrors.noPermissionToMint);
 
     recipient
@@ -167,6 +188,9 @@ class FungibleToken extends TokenContract {
     );
 
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount);
+
+    await this.verifySideLoadedProof(proof, vk, shouldVerifyProof, recipient);
+
     return accountUpdate;
   }
 
@@ -291,13 +315,15 @@ class FungibleToken extends TokenContract {
     this.mintConfig.set(mintConfig);
   }
 
-  //! a config can be added to enforce additional conditions when updating the verification key.
+  //! A config can be added to enforce additional conditions when updating the verification key.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async canChangeVerificationKey(_vk: VerificationKey): Promise<Bool> {
     await this.ensureAdminSignature(Bool(true));
     return Bool(true);
   }
 
-  //! a config can be added to enforce additional conditions when updating the admin public key.
+  //! A config can be added to enforce additional conditions when updating the admin public key.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async canChangeAdmin(_admin: PublicKey) {
     await this.ensureAdminSignature(Bool(true));
     return Bool(true);
@@ -319,11 +345,72 @@ class FungibleToken extends TokenContract {
     const upperBound = magnitude.lessThanOrEqual(maxAmount);
     const isInRange = lowerBound.and(upperBound);
 
-    return Provable.switch(
+    const canMint = Provable.switch(
       [mintConfig.fixedAmountMint, mintConfig.rangeMint],
       Bool,
       [isFixed, isInRange]
     );
+
+    return { canMint, shouldVerifyProof: mintConfig.verifySideLoadedProof };
+  }
+
+  private async verifySideLoadedProof(
+    proof: SideloadedProof,
+    vk: VerificationKey,
+    shouldVerifyProof: Bool,
+    recipient: PublicKey
+  ) {
+    // Ensure the provided side-loaded verification key hash matches the stored on-chain state.
+    const isVKeyValid = Provable.if(
+      shouldVerifyProof,
+      vk.hash.equals(this.vKey.getAndRequireEquals()),
+      Bool(true)
+    );
+    isVKeyValid.assertTrue('Invalid side-loaded verification key!');
+
+    const { address, tokenId } = proof.publicInput;
+
+    // Check that the address in the proof corresponds to the recipient passed by the provable method.
+    const isRecipientValid = Provable.if(
+      shouldVerifyProof,
+      address.equals(recipient),
+      Bool(true)
+    );
+    isRecipientValid.assertTrue('Recipient mismatch in side-loaded proof!');
+
+    const { minaAccountData, tokenIdAccountData, minaBalance, tokenIdBalance } =
+      proof.publicOutput;
+
+    // Verify that the tokenId provided in the public input matches the tokenId in the public output.
+    Provable.if(
+      shouldVerifyProof,
+      tokenIdAccountData.tokenId.equals(tokenId),
+      Bool(true)
+    ).assertTrue('Token ID mismatch between input and output.');
+
+    // Ensure the MINA account data uses native MINA.
+    Provable.if(
+      shouldVerifyProof,
+      minaAccountData.tokenId.equals(1),
+      Bool(true)
+    ).assertTrue('Incorrect token ID; expected native MINA.');
+
+    // Verify that the MINA balance captured during proof generation matches the current on-chain balance at verification.
+    Provable.if(
+      shouldVerifyProof,
+      minaAccountData.account.balance.get().equals(minaBalance),
+      Bool(true)
+    ).assertTrue('Mismatch in MINA account balance.');
+
+    // Verify that the CUSTOM TOKEN balance captured during proof generation matches the current on-chain balance at verification.
+    Provable.if(
+      shouldVerifyProof,
+      tokenIdAccountData.account.balance.get().equals(tokenIdBalance),
+      Bool(true)
+    ).assertTrue('Custom token balance inconsistency detected.');
+
+    // Conditionally verify the provided side-loaded proof.
+    proof.verifyIf(vk, shouldVerifyProof);
   }
 }
 

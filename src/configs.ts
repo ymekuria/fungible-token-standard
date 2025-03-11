@@ -12,6 +12,7 @@ class MintConfig extends Struct({
   publicMint: Bool,
   fixedAmountMint: Bool,
   rangeMint: Bool,
+  verifySideLoadedProof: Bool,
 }) {}
 
 /**
@@ -38,4 +39,5 @@ const DEFAULT_MINT_CONFIG = new MintConfig({
   publicMint: Bool(false),
   fixedAmountMint: Bool(false),
   rangeMint: Bool(true),
+  verifySideLoadedProof: Bool(false),
 });
