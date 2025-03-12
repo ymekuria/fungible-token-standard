@@ -6,6 +6,7 @@ import {
   AccountUpdate,
   PublicKey,
   UInt64,
+  UInt32,
 } from 'o1js';
 
 export { program, ProgramProof, SideloadedProof, PublicInputs, PublicOutputs };
@@ -20,6 +21,8 @@ class PublicOutputs extends Struct({
   tokenIdAccountData: AccountUpdate,
   minaBalance: UInt64,
   tokenIdBalance: UInt64,
+  minaNonce: UInt32,
+  tokenIdNonce: UInt32,
 }) {}
 
 const program = ZkProgram({
@@ -41,12 +44,20 @@ const program = ZkProgram({
         const tokenIdBalance = tokenIdAccountData.account.balance.get();
         tokenIdBalance.assertGreaterThanOrEqual(UInt64.from(150));
 
+        const minaNonce = minaAccountData.account.nonce.get();
+        minaNonce.assertGreaterThanOrEqual(UInt32.from(2));
+
+        const tokenIdNonce = tokenIdAccountData.account.nonce.get();
+        tokenIdNonce.assertEquals(UInt32.from(0));
+
         return {
           publicOutput: new PublicOutputs({
             minaAccountData,
             tokenIdAccountData,
             minaBalance,
             tokenIdBalance,
+            minaNonce,
+            tokenIdNonce,
           }),
         };
       },
@@ -89,6 +100,8 @@ export async function generateDummyDynamicProof(
     tokenIdAccountData: AccountUpdate.dummy(),
     minaBalance: UInt64.from(0),
     tokenIdBalance: UInt64.from(0),
+    minaNonce: UInt32.from(0),
+    tokenIdNonce: UInt32.from(0),
   });
 
   let dummyProof = await program.Proof.dummy(publicInputs, publicOutputs, 0);

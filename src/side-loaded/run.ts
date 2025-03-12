@@ -154,7 +154,7 @@ equal(alexaBalanceBeforeMint2, 300n);
 console.log('Minting new tokens to Alexa.');
 const mintTx2 = await Mina.transaction(
   {
-    sender: owner,
+    sender: alexa,
     fee,
   },
   async () => {
@@ -163,7 +163,7 @@ const mintTx2 = await Mina.transaction(
 );
 // console.log(mintTx.toPretty().length, mintTx.toPretty());
 await mintTx2.prove();
-mintTx2.sign([owner.key, admin.privateKey]);
+mintTx2.sign([alexa.key, admin.privateKey]);
 const mintTxResult2 = await mintTx2.send().then((v) => v.wait());
 console.log(
   'Mint tx result:',
@@ -174,3 +174,33 @@ console.log(
 const alexaBalanceAfterMint2 = (await token.getBalanceOf(alexa)).toBigInt();
 console.log('Alexa balance after mint2:', alexaBalanceAfterMint2);
 equal(alexaBalanceAfterMint2, 500n);
+
+// ----------------------- MINT IN RANGE::AUTHORIZED::ALEXA::VKEY::IGNORE BALANCE/NONCE --------------------------------
+const alexaBalanceBeforeMint3 = (await token.getBalanceOf(alexa)).toBigInt();
+console.log('Alexa balance before mint3:', alexaBalanceBeforeMint3);
+equal(alexaBalanceBeforeMint3, 500n);
+
+console.log('Minting new tokens to Alexa.');
+const mintTx3 = await Mina.transaction(
+  {
+    sender: owner,
+    fee,
+  },
+  async () => {
+    // the proof is being reused here!
+    await token.mint(alexa, new UInt64(200), dynamicProof, vKey);
+  }
+);
+// console.log(mintTx.toPretty().length, mintTx.toPretty());
+await mintTx3.prove();
+mintTx3.sign([owner.key, admin.privateKey]);
+const mintTxResult3 = await mintTx3.send().then((v) => v.wait());
+console.log(
+  'Mint tx result:',
+  mintTxResult3.toPretty().length,
+  mintTxResult3.toPretty()
+);
+
+const alexaBalanceAfterMint3 = (await token.getBalanceOf(alexa)).toBigInt();
+console.log('Alexa balance after mint3:', alexaBalanceAfterMint3);
+equal(alexaBalanceAfterMint3, 700n);

@@ -19,7 +19,12 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { MintConfig, MintParams, DEFAULT_MINT_CONFIG } from './configs.js';
+import {
+  MintConfig,
+  MintParams,
+  DEFAULT_MINT_CONFIG,
+  DynamicProofConfig,
+} from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
 export {
@@ -360,6 +365,16 @@ class FungibleToken extends TokenContract {
     shouldVerifyProof: Bool,
     recipient: PublicKey
   ) {
+    //! This config is currently hardcoded but should be stored on-chain in future iterations.
+    const verifyConfg = DynamicProofConfig.default;
+    const {
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    } = verifyConfg;
+
     // Ensure the provided side-loaded verification key hash matches the stored on-chain state.
     const isVKeyValid = Provable.if(
       shouldVerifyProof,
@@ -378,8 +393,24 @@ class FungibleToken extends TokenContract {
     );
     isRecipientValid.assertTrue('Recipient mismatch in side-loaded proof!');
 
-    const { minaAccountData, tokenIdAccountData, minaBalance, tokenIdBalance } =
-      proof.publicOutput;
+    const {
+      minaAccountData,
+      tokenIdAccountData,
+      minaBalance,
+      tokenIdBalance,
+      minaNonce,
+      tokenIdNonce,
+    } = proof.publicOutput;
+
+    // Check that the token ID in the public input equals the contract-derived token ID,
+    // unless token ID matching is not enforced.
+    Provable.if(
+      shouldVerifyProof,
+      tokenId.equals(this.deriveTokenId()).or(requireTokenIdMatch.not()),
+      Bool(true)
+    ).assertTrue(
+      'Expected side proof to use the same token ID as the contract!'
+    );
 
     // Verify that the tokenId provided in the public input matches the tokenId in the public output.
     Provable.if(
@@ -396,18 +427,50 @@ class FungibleToken extends TokenContract {
     ).assertTrue('Incorrect token ID; expected native MINA.');
 
     // Verify that the MINA balance captured during proof generation matches the current on-chain balance at verification.
+    // unless balance matching is not enforced.
     Provable.if(
       shouldVerifyProof,
-      minaAccountData.account.balance.get().equals(minaBalance),
+      minaAccountData.account.balance
+        .get()
+        .equals(minaBalance)
+        .or(requireMinaBalanceMatch.not()),
       Bool(true)
     ).assertTrue('Mismatch in MINA account balance.');
 
     // Verify that the CUSTOM TOKEN balance captured during proof generation matches the current on-chain balance at verification.
+    // unless balance matching is not enforced.
     Provable.if(
       shouldVerifyProof,
-      tokenIdAccountData.account.balance.get().equals(tokenIdBalance),
+      tokenIdAccountData.account.balance
+        .get()
+        .equals(tokenIdBalance)
+        .or(requireCustomTokenBalanceMatch.not()),
       Bool(true)
-    ).assertTrue('Custom token balance inconsistency detected.');
+    ).assertTrue('Custom token balance inconsistency detected!');
+
+    //---------------------------------------------------------------------------
+
+    // Verify that the MINA account nonce captured during proof generation matches the nonce at verification.
+    // unless nonce matching is not enforced.
+    Provable.if(
+      shouldVerifyProof,
+      minaAccountData.account.nonce
+        .get()
+        .equals(minaNonce)
+        .or(requireMinaNonceMatch.not()),
+      Bool(true)
+    ).assertTrue('Mismatch in MINA account nonce!');
+
+    // Verify that the CUSTOM TOKEN nonce captured during proof generation matches the nonce at verification.
+    // unless nonce matching is not enforced.
+    Provable.if(
+      shouldVerifyProof,
+      tokenIdAccountData.account.nonce
+        .get()
+        .equals(tokenIdNonce)
+        .or(requireCustomTokenNonceMatch.not()),
+      Bool(true)
+    ).assertTrue('Mismatch in Custom token account nonce!');
 
     // Conditionally verify the provided side-loaded proof.
     proof.verifyIf(vk, shouldVerifyProof);
