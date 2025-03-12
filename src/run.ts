@@ -1,7 +1,11 @@
 import { equal } from 'node:assert';
 import { AccountUpdate, Bool, Mina, PrivateKey, UInt64, UInt8 } from 'o1js';
 import { FungibleToken } from './NewTokenStandard.js';
-import { MintConfig } from './configs.js';
+import { MintConfig, MintParams, DynamicProofConfig } from './configs.js';
+import {
+  generateDummyDynamicProof,
+  program,
+} from './side-loaded/program.eg.js';
 
 const localChain = await Mina.LocalBlockchain({
   proofsEnabled: false,
@@ -15,6 +19,18 @@ const contract = PrivateKey.randomKeypair();
 const admin = PrivateKey.randomKeypair();
 
 const token = new FungibleToken(contract.publicKey);
+
+const vKey = (await program.compile()).verificationKey;
+const dummyProof = await generateDummyDynamicProof(
+  token.deriveTokenId(),
+  alexa
+);
+
+const mintParams = new MintParams({
+  fixedAmount: UInt64.from(200),
+  minAmount: UInt64.from(0),
+  maxAmount: UInt64.from(1000),
+});
 
 // ----------------------- DEPLOY --------------------------------
 console.log('Deploying token contract.');
@@ -30,7 +46,13 @@ const deployTx = await Mina.transaction(
       src: 'https://github.com/MinaFoundation/mina-fungible-token/blob/main/FungibleToken.ts',
       allowUpdates: true,
     });
-    await token.initialize(admin.publicKey, UInt8.from(9));
+    await token.initialize(
+      admin.publicKey,
+      UInt8.from(9),
+      MintConfig.default,
+      mintParams,
+      DynamicProofConfig.default
+    );
   }
 );
 await deployTx.prove();
@@ -52,7 +74,7 @@ const mintTx = await Mina.transaction(
   },
   async () => {
     AccountUpdate.fundNewAccount(owner, 2);
-    await token.mint(alexa, new UInt64(300));
+    await token.mint(alexa, new UInt64(300), dummyProof, vKey);
   }
 );
 // console.log(mintTx.toPretty().length, mintTx.toPretty());
@@ -77,11 +99,12 @@ const updateMintConfigTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.updateMintConfig(
+    await token.updatePackedMintConfig(
       new MintConfig({
         publicMint: Bool(true),
         fixedAmountMint: Bool(true),
         rangeMint: Bool(false),
+        verifySideLoadedProof: Bool(false),
       })
     );
   }
@@ -101,7 +124,7 @@ const mintTx2 = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.mint(alexa, new UInt64(200));
+    await token.mint(alexa, new UInt64(200), dummyProof, vKey);
   }
 );
 await mintTx2.prove();

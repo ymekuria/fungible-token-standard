@@ -19,12 +19,7 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import {
-  MintConfig,
-  MintParams,
-  DEFAULT_MINT_CONFIG,
-  DynamicProofConfig,
-} from './configs.js';
+import { MintConfig, MintParams, DynamicProofConfig } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
 export {
@@ -64,9 +59,12 @@ const FungibleTokenErrors = {
 class FungibleToken extends TokenContract {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
-  @state(MintConfig) mintConfig = State<MintConfig>();
+  @state(Field) packedMintConfig = State<Field>();
+  @state(Field) packedMintParams = State<Field>();
+  @state(Field) packedDynamicProofConfig = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
-  @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
+  @state(Field)
+  vKey = State<Field>(); // the side-loaded verification key hash.
   //TODO add state for `mintParams` -> requires data packing!
 
   readonly events = {
@@ -104,14 +102,22 @@ class FungibleToken extends TokenContract {
    * @argument {UInt8} decimals - number of decimals for the token
    */
   @method
-  async initialize(admin: PublicKey, decimals: UInt8) {
+  async initialize(
+    admin: PublicKey,
+    decimals: UInt8,
+    mintConfig: MintConfig,
+    mintParams: MintParams,
+    dynamicProofConfig: DynamicProofConfig
+  ) {
     this.account.provedState.requireEquals(Bool(false));
 
     this.admin.set(admin);
     this.decimals.set(decimals);
 
-    //! should be maintained as on-chain state and updated exclusively by the admin
-    this.mintConfig.set(DEFAULT_MINT_CONFIG);
+    //! Should be maintained as on-chain states and updated exclusively by the admin
+    this.packedMintConfig.set(mintConfig.pack());
+    this.packedMintParams.set(mintParams.pack());
+    this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
 
     const accountUpdate = AccountUpdate.createSigned(
       this.address,
@@ -164,14 +170,8 @@ class FungibleToken extends TokenContract {
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
 
-    //! mint parameters are hardcoded here!
-    // In a production environment, these parameters should be stored on-chain
-    // and updated exclusively by the admin.
-    const mintParams = new MintParams({
-      fixedAmount: UInt64.from(200),
-      minAmount: UInt64.from(0),
-      maxAmount: UInt64.from(1000),
-    });
+    const packedMintParams = this.packedMintParams.getAndRequireEquals();
+    const mintParams = MintParams.unpack(packedMintParams);
 
     const { canMint, shouldVerifyProof } = await this.canMint(
       accountUpdate,
@@ -306,7 +306,7 @@ class FungibleToken extends TokenContract {
   }
 
   @method
-  async updateMintConfig(mintConfig: MintConfig) {
+  async updatePackedMintConfig(mintConfig: MintConfig) {
     //! maybe enforce that sender is admin instead of approving with an admin signature
     this.ensureAdminSignature(Bool(true));
     const { fixedAmountMint, rangeMint } = mintConfig;
@@ -317,7 +317,21 @@ class FungibleToken extends TokenContract {
         1,
         'Exactly one of fixed amount mint or range mint must be enabled!'
       );
-    this.mintConfig.set(mintConfig);
+    this.packedMintConfig.set(mintConfig.pack());
+  }
+
+  @method
+  async updatePackedMintParams(mintParams: MintParams) {
+    this.ensureAdminSignature(Bool(true));
+    //! maybe enforce more restrictions
+    this.packedMintParams.set(mintParams.pack());
+  }
+
+  @method
+  async updatePackedDynamicProofConfig(dynamicProofConfig: DynamicProofConfig) {
+    //! maybe enforce more restriction
+    this.ensureAdminSignature(Bool(true));
+    this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
   }
 
   //! A config can be added to enforce additional conditions when updating the verification key.
@@ -335,7 +349,9 @@ class FungibleToken extends TokenContract {
   }
 
   private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
-    const mintConfig = this.mintConfig.getAndRequireEquals();
+    const packedMintConfig = this.packedMintConfig.getAndRequireEquals();
+    const mintConfig = MintConfig.unpack(packedMintConfig);
+
     const { fixedAmount, minAmount, maxAmount } = mintParams;
 
     minAmount.assertLessThan(maxAmount, 'Invalid mint range!');
@@ -365,15 +381,18 @@ class FungibleToken extends TokenContract {
     shouldVerifyProof: Bool,
     recipient: PublicKey
   ) {
-    //! This config is currently hardcoded but should be stored on-chain in future iterations.
-    const verifyConfg = DynamicProofConfig.default;
+    const packedDynamicProofConfig =
+      this.packedDynamicProofConfig.getAndRequireEquals();
+    const dynamicProofConfig = DynamicProofConfig.unpack(
+      packedDynamicProofConfig
+    );
     const {
       requireTokenIdMatch,
       requireMinaBalanceMatch,
       requireCustomTokenBalanceMatch,
       requireMinaNonceMatch,
       requireCustomTokenNonceMatch,
-    } = verifyConfg;
+    } = dynamicProofConfig;
 
     // Ensure the provided side-loaded verification key hash matches the stored on-chain state.
     const isVKeyValid = Provable.if(
@@ -447,8 +466,6 @@ class FungibleToken extends TokenContract {
         .or(requireCustomTokenBalanceMatch.not()),
       Bool(true)
     ).assertTrue('Custom token balance inconsistency detected!');
-
-    //---------------------------------------------------------------------------
 
     // Verify that the MINA account nonce captured during proof generation matches the nonce at verification.
     // unless nonce matching is not enforced.

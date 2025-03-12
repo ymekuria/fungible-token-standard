@@ -9,7 +9,7 @@ import {
   UInt8,
 } from 'o1js';
 import { FungibleToken } from '../NewTokenStandard.js';
-import { MintConfig } from '../configs.js';
+import { DynamicProofConfig, MintConfig, MintParams } from '../configs.js';
 import {
   program,
   generateDummyDynamicProof,
@@ -40,6 +40,12 @@ Provable.log('FTS verification key: ', scVkey.hash);
 const vKey = (await program.compile()).verificationKey;
 Provable.log('Program verification key: ', vKey.hash);
 
+const mintParams = new MintParams({
+  fixedAmount: UInt64.from(200),
+  minAmount: UInt64.from(0),
+  maxAmount: UInt64.from(1000),
+});
+
 // ----------------------- DEPLOY --------------------------------
 console.log('Deploying token contract.');
 const deployTx = await Mina.transaction(
@@ -54,7 +60,13 @@ const deployTx = await Mina.transaction(
       src: 'https://github.com/MinaFoundation/mina-fungible-token/blob/main/FungibleToken.ts',
       allowUpdates: true,
     });
-    await token.initialize(admin.publicKey, UInt8.from(9));
+    await token.initialize(
+      admin.publicKey,
+      UInt8.from(9),
+      MintConfig.default,
+      mintParams,
+      DynamicProofConfig.default
+    );
   }
 );
 await deployTx.prove();
@@ -109,7 +121,7 @@ const updateMintConfigTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.updateMintConfig(
+    await token.updatePackedMintConfig(
       new MintConfig({
         publicMint: Bool(false),
         fixedAmountMint: Bool(true),
@@ -175,6 +187,36 @@ const alexaBalanceAfterMint2 = (await token.getBalanceOf(alexa)).toBigInt();
 console.log('Alexa balance after mint2:', alexaBalanceAfterMint2);
 equal(alexaBalanceAfterMint2, 500n);
 
+// ----------------------- UPDATE DYNAMIC PROOF CONFIG::AUTHORIZED
+//                         ::IGNORE::{requireMinaBalanceMatch, requireCustomTokenBalanceMatch, requireMinaNonceMatch} --------------------------------
+const flexibleDynamicProofConfig = new DynamicProofConfig({
+  requireTokenIdMatch: Bool(true),
+  requireMinaBalanceMatch: Bool(false),
+  requireCustomTokenBalanceMatch: Bool(false),
+  requireMinaNonceMatch: Bool(false),
+  requireCustomTokenNonceMatch: Bool(true),
+});
+
+console.log('updating the dynamic proof config...');
+const updateDynamicProofConfigTx = await Mina.transaction(
+  {
+    sender: owner,
+    fee,
+  },
+  async () => {
+    await token.updatePackedDynamicProofConfig(flexibleDynamicProofConfig);
+  }
+);
+await updateDynamicProofConfigTx.prove();
+await updateDynamicProofConfigTx
+  .sign([owner.key, admin.privateKey])
+  .send()
+  .wait();
+console.log(
+  updateDynamicProofConfigTx.toPretty().length,
+  updateDynamicProofConfigTx.toPretty()
+);
+
 // ----------------------- MINT IN RANGE::AUTHORIZED::ALEXA::VKEY::IGNORE BALANCE/NONCE --------------------------------
 const alexaBalanceBeforeMint3 = (await token.getBalanceOf(alexa)).toBigInt();
 console.log('Alexa balance before mint3:', alexaBalanceBeforeMint3);
@@ -188,6 +230,7 @@ const mintTx3 = await Mina.transaction(
   },
   async () => {
     // the proof is being reused here!
+    //! it would have failed if we didn't update the config to a more flexible one
     await token.mint(alexa, new UInt64(200), dynamicProof, vKey);
   }
 );
