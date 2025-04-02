@@ -81,6 +81,24 @@ class MintConfig extends Struct({
 
     return packedMintConfig;
   }
+
+  /**
+   * Validates the minting configuration to ensure that exactly one minting mode
+   * is enabled—either fixed amount mint or range mint. Throws an error if both
+   * or neither are enabled.
+   *
+   * @throws If neither or both `fixedAmountMint` and `rangeMint` are enabled.
+   */
+  validate() {
+    const { fixedAmountMint, rangeMint } = this;
+    fixedAmountMint
+      .toField()
+      .add(rangeMint.toField())
+      .assertEquals(
+        1,
+        'Exactly one of the fixed amount or range mint options must be enabled!'
+      );
+  }
 }
 
 /**
@@ -144,6 +162,17 @@ class MintParams extends Struct({
     const packedMintParams = Field.fromBits(serializedMintParams);
 
     return packedMintParams;
+  }
+
+  /**
+   * Validates that the minting range is correctly configured by asserting that
+   * `minAmount` is less than `maxAmount`.
+   *
+   * @throws If `minAmount` is not less than `maxAmount`.
+   */
+  validate() {
+    const { minAmount, maxAmount } = this;
+    minAmount.assertLessThan(maxAmount, 'Invalid mint range!');
   }
 }
 

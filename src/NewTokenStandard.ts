@@ -109,8 +109,9 @@ class FungibleToken extends TokenContract {
     this.admin.set(admin);
     this.decimals.set(decimals);
 
-    //! Should be maintained as on-chain states and updated exclusively by the admin
+    mintConfig.validate();
     this.packedMintConfig.set(mintConfig.pack());
+    mintParams.validate();
     this.packedMintParams.set(mintParams.pack());
     this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
 
@@ -119,6 +120,7 @@ class FungibleToken extends TokenContract {
       this.deriveTokenId()
     );
     let permissions = Permissions.default();
+
     // This is necessary in order to allow token holders to burn.
     permissions.send = Permissions.none();
     permissions.setPermissions = Permissions.impossible();
@@ -304,21 +306,16 @@ class FungibleToken extends TokenContract {
   async updatePackedMintConfig(mintConfig: MintConfig) {
     //! maybe enforce that sender is admin instead of approving with an admin signature
     this.ensureAdminSignature(Bool(true));
-    const { fixedAmountMint, rangeMint } = mintConfig;
-    fixedAmountMint
-      .toField()
-      .add(rangeMint.toField())
-      .assertEquals(
-        1,
-        'Exactly one of fixed amount mint or range mint must be enabled!'
-      );
+    mintConfig.validate();
+
     this.packedMintConfig.set(mintConfig.pack());
   }
 
   @method
   async updatePackedMintParams(mintParams: MintParams) {
     this.ensureAdminSignature(Bool(true));
-    //! maybe enforce more restrictions
+    mintParams.validate();
+
     this.packedMintParams.set(mintParams.pack());
   }
 
@@ -348,8 +345,6 @@ class FungibleToken extends TokenContract {
     const mintConfig = MintConfig.unpack(packedMintConfig);
 
     const { fixedAmount, minAmount, maxAmount } = mintParams;
-
-    minAmount.assertLessThan(maxAmount, 'Invalid mint range!');
 
     await this.ensureAdminSignature(mintConfig.publicMint.not());
 
