@@ -37,9 +37,6 @@ interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   /** A source code reference, which is placed within the `zkappUri` of the contract account.
    * Typically a link to a file on github. */
   src: string;
-  /** Setting this to `true` will allow changing the verification key later with a signature from the deployer. This will allow updating the token contract at a later stage, for instance to react to an update of the o1js library.
-   * Setting it to `false` will make changes to the contract impossible, unless there is a backward incompatible change to the protocol. (see https://docs.minaprotocol.com/zkapps/writing-a-zkapp/feature-overview/permissions#example-impossible-to-upgrade and https://minafoundation.github.io/mina-fungible-token/deploy.html) */
-  allowUpdates: boolean;
 }
 
 const FungibleTokenErrors = {
@@ -63,8 +60,7 @@ class FungibleToken extends TokenContract {
   @state(Field) packedMintParams = State<Field>();
   @state(Field) packedDynamicProofConfig = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
-  @state(Field)
-  vKey = State<Field>(); // the side-loaded verification key hash.
+  @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
   //TODO add state for `mintParams` -> requires data packing!
 
   readonly events = {
@@ -89,9 +85,8 @@ class FungibleToken extends TokenContract {
 
     this.account.permissions.set({
       ...Permissions.default(),
-      setVerificationKey: props.allowUpdates
-        ? Permissions.VerificationKey.proofDuringCurrentVersion()
-        : Permissions.VerificationKey.impossibleDuringCurrentVersion(),
+      setVerificationKey:
+        Permissions.VerificationKey.impossibleDuringCurrentVersion(),
       setPermissions: Permissions.impossible(),
       access: Permissions.proof(),
     });
