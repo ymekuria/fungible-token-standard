@@ -103,24 +103,19 @@ class MintParams extends Struct({
    * - minAmount, and
    * - maxAmount.
    *
-   * Each segment is converted back into a Field and then into a UInt64 value.
+   * Each segment is converted back into a UInt64 value.
    *
    * @param packedMintParams - The packed mint parameters as a Field.
    * @returns A new MintParams instance with the unpacked fixed, minimum, and maximum amounts.
    */
   static unpack(packedMintParams: Field) {
     const serializedMintParams = packedMintParams.toBits(64 * 3);
-    const fixedAmountField = Field.fromBits(serializedMintParams.slice(0, 64));
-    const minAmountField = Field.fromBits(
-      serializedMintParams.slice(64, 64 * 2)
-    );
-    const maxAmountField = Field.fromBits(
+
+    const fixedAmount = UInt64.fromBits(serializedMintParams.slice(0, 64));
+    const minAmount = UInt64.fromBits(serializedMintParams.slice(64, 64 * 2));
+    const maxAmount = UInt64.fromBits(
       serializedMintParams.slice(64 * 2, 64 * 3)
     );
-
-    const fixedAmount = UInt64.Unsafe.fromField(fixedAmountField);
-    const minAmount = UInt64.Unsafe.fromField(minAmountField);
-    const maxAmount = UInt64.Unsafe.fromField(maxAmountField);
 
     return new this({
       fixedAmount,
@@ -141,9 +136,9 @@ class MintParams extends Struct({
   pack() {
     const { fixedAmount, minAmount, maxAmount } = this;
     const serializedMintParams = [
-      fixedAmount.value.toBits(64),
-      minAmount.value.toBits(64),
-      maxAmount.value.toBits(64),
+      fixedAmount.toBits(),
+      minAmount.toBits(),
+      maxAmount.toBits(),
     ].flat();
 
     const packedMintParams = Field.fromBits(serializedMintParams);
