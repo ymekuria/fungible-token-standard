@@ -9,7 +9,18 @@ import {
   UInt32,
 } from 'o1js';
 
-export { program, ProgramProof, SideloadedProof, PublicInputs, PublicOutputs };
+export {
+  program,
+  ProgramProof,
+  SideloadedProof,
+  PublicInputs,
+  PublicOutputs,
+  generateDummyDynamicProof,
+  generateDynamicProof,
+  program2,
+  Program2Proof,
+  generateDynamicProof2,
+};
 
 class PublicInputs extends Struct({
   tokenId: Field,
@@ -48,7 +59,7 @@ const program = ZkProgram({
         minaNonce.assertGreaterThanOrEqual(UInt32.from(2));
 
         const tokenIdNonce = tokenIdAccountData.account.nonce.get();
-        tokenIdNonce.assertEquals(UInt32.from(0));
+        tokenIdNonce.assertGreaterThanOrEqual(UInt32.from(0));
 
         return {
           publicOutput: new PublicOutputs({
@@ -75,7 +86,7 @@ class SideloadedProof extends DynamicProof<PublicInputs, PublicOutputs> {
 
 // ---------------------- UTILS ----------------------------
 
-export async function generateDynamicProof(tokenId: Field, address: PublicKey) {
+async function generateDynamicProof(tokenId: Field, address: PublicKey) {
   const publicInputs = new PublicInputs({
     tokenId,
     address,
@@ -87,10 +98,7 @@ export async function generateDynamicProof(tokenId: Field, address: PublicKey) {
   return dynamicProof;
 }
 
-export async function generateDummyDynamicProof(
-  tokenId: Field,
-  address: PublicKey
-) {
+async function generateDummyDynamicProof(tokenId: Field, address: PublicKey) {
   const publicInputs = new PublicInputs({
     tokenId,
     address,
@@ -108,4 +116,61 @@ export async function generateDummyDynamicProof(
   const dynamicDummyProof = SideloadedProof.fromProof(dummyProof);
 
   return dynamicDummyProof;
+}
+
+// ---------------------------------------------------------------------------
+const program2 = ZkProgram({
+  name: 'approve-mint',
+  publicInput: PublicInputs,
+  publicOutput: PublicOutputs,
+  methods: {
+    approveMint2: {
+      privateInputs: [],
+      async method(publicInputs: PublicInputs) {
+        const { tokenId, address } = publicInputs;
+
+        const minaAccountData = AccountUpdate.default(address);
+        const tokenIdAccountData = AccountUpdate.default(address, tokenId);
+
+        const minaBalance = minaAccountData.account.balance.get();
+        minaBalance.assertGreaterThan(UInt64.from(100 * 1e9));
+        // new
+        minaBalance.assertLessThanOrEqual(UInt64.from(1000 * 1e9));
+
+        const tokenIdBalance = tokenIdAccountData.account.balance.get();
+        tokenIdBalance.assertGreaterThanOrEqual(UInt64.from(150));
+
+        const minaNonce = minaAccountData.account.nonce.get();
+        minaNonce.assertGreaterThanOrEqual(UInt32.from(2));
+
+        const tokenIdNonce = tokenIdAccountData.account.nonce.get();
+        tokenIdNonce.assertEquals(UInt32.from(0));
+
+        return {
+          publicOutput: new PublicOutputs({
+            minaAccountData,
+            tokenIdAccountData,
+            minaBalance,
+            tokenIdBalance,
+            minaNonce,
+            tokenIdNonce,
+          }),
+        };
+      },
+    },
+  },
+});
+
+class Program2Proof extends ZkProgram.Proof(program2) {}
+
+async function generateDynamicProof2(tokenId: Field, address: PublicKey) {
+  const publicInputs = new PublicInputs({
+    tokenId,
+    address,
+  });
+
+  const proof2 = (await program2.approveMint2(publicInputs)).proof;
+  const dynamicProof = SideloadedProof.fromProof(proof2);
+
+  return dynamicProof;
 }
