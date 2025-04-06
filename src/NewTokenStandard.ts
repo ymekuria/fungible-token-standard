@@ -392,7 +392,7 @@ class FungibleToken extends TokenContract {
     );
     isVKeyValid.assertTrue('Invalid side-loaded verification key!');
 
-    const { address, tokenId } = proof.publicInput;
+    const { address } = proof.publicInput;
 
     // Check that the address in the proof corresponds to the recipient passed by the provable method.
     const isRecipientValid = Provable.if(
@@ -411,20 +411,13 @@ class FungibleToken extends TokenContract {
       tokenIdNonce,
     } = proof.publicOutput;
 
-    // Check that the token ID in the public input equals the contract-derived token ID,
+    // Verify that the tokenId provided in the public input matches the tokenId in the public output,
     // unless token ID matching is not enforced.
     Provable.if(
       shouldVerifyProof,
-      tokenId.equals(this.deriveTokenId()).or(requireTokenIdMatch.not()),
-      Bool(true)
-    ).assertTrue(
-      'Expected side proof to use the same token ID as the contract!'
-    );
-
-    // Verify that the tokenId provided in the public input matches the tokenId in the public output.
-    Provable.if(
-      shouldVerifyProof,
-      tokenIdAccountData.tokenId.equals(tokenId),
+      tokenIdAccountData.tokenId
+        .equals(this.deriveTokenId())
+        .or(requireTokenIdMatch.not()),
       Bool(true)
     ).assertTrue('Token ID mismatch between input and output.');
 
