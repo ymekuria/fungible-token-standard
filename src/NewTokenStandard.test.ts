@@ -219,9 +219,9 @@ describe('New Token Standard Tests', () => {
 
     it('should reject initialization with invalid mintConfig', async () => {
       const invalidMintConfig = new MintConfig({
-        publicMint: Bool(true),
-        fixedAmountMint: Bool(true),
-        rangeMint: Bool(true),
+        unauthorized: Bool(true),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(true),
       });
 
       const initializeTx = async () => {
@@ -243,7 +243,7 @@ describe('New Token Standard Tests', () => {
       };
 
       const errorMessage =
-        'Exactly one of the fixed amount or range mint options must be enabled!';
+        'Exactly one of the fixed or ranged amount options must be enabled!';
       expect(initializeTx).rejects.toThrowError(errorMessage);
     });
 
@@ -321,23 +321,23 @@ describe('New Token Standard Tests', () => {
       describe('Update Mint Config', () => {
         it('should reject mintConfig update when both range and fixed mint are enabled', async () => {
           const mintConfig = new MintConfig({
-            publicMint: Bool(true),
-            fixedAmountMint: Bool(true),
-            rangeMint: Bool(true),
+            unauthorized: Bool(true),
+            fixedAmount: Bool(true),
+            rangedAmount: Bool(true),
           });
           const tx = async () =>
             updateMintConfigTx(user1, mintConfig, [user1.key, tokenAdmin.key]);
 
           expect(tx).rejects.toThrowError(
-            'Exactly one of the fixed amount or range mint options must be enabled!'
+            'Exactly one of the fixed or ranged amount options must be enabled!'
           );
         });
 
         it('should reject mintConfig update when unauthorized by the admin', async () => {
           const mintConfig = new MintConfig({
-            publicMint: Bool(true),
-            fixedAmountMint: Bool(true),
-            rangeMint: Bool(false),
+            unauthorized: Bool(true),
+            fixedAmount: Bool(true),
+            rangedAmount: Bool(false),
           });
           const tx = async () =>
             updateMintConfigTx(user2, mintConfig, [user2.key]);
@@ -349,9 +349,9 @@ describe('New Token Standard Tests', () => {
 
         it('should update packed mintConfig', async () => {
           const mintConfig = new MintConfig({
-            publicMint: Bool(true),
-            fixedAmountMint: Bool(true),
-            rangeMint: Bool(false),
+            unauthorized: Bool(true),
+            fixedAmount: Bool(true),
+            rangedAmount: Bool(false),
           });
 
           await updateMintConfigTx(user2, mintConfig, [
@@ -440,9 +440,9 @@ describe('New Token Standard Tests', () => {
   describe('Mint Config: Authorized/Range/SLVerify Mint', () => {
     it('should update mintConfig and proofConfig for Authorized / Range / SLVerify settings', async () => {
       const mintConfig = new MintConfig({
-        publicMint: Bool(true),
-        fixedAmountMint: Bool(true),
-        rangeMint: Bool(false),
+        unauthorized: Bool(true),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(false),
       });
 
       await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);

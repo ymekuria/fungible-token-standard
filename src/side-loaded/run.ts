@@ -122,10 +122,9 @@ const updateMintConfigTx = await Mina.transaction(
   async () => {
     await token.updatePackedMintConfig(
       new MintConfig({
-        publicMint: Bool(false),
-        fixedAmountMint: Bool(true),
-        rangeMint: Bool(false),
-        verifySideLoadedProof: Bool(true),
+        unauthorized: Bool(false),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(false),
       })
     );
   }
@@ -136,7 +135,21 @@ console.log(
   updateMintConfigTx.toPretty().length,
   updateMintConfigTx.toPretty()
 );
+// ----------------------- UPDATE DYNAMIC PROOF CONFIG ----------------------------
+let dynamicProofConfig = DynamicProofConfig.default;
+dynamicProofConfig.shouldVerify = Bool(true);
 
+const updatePackedDynamicProofConfigTx = await Mina.transaction(
+  { sender: alexa, fee },
+  async () => {
+    await token.updatePackedDynamicProofConfig(dynamicProofConfig);
+  }
+);
+await updatePackedDynamicProofConfigTx.prove();
+await updatePackedDynamicProofConfigTx
+  .sign([alexa.key, admin.privateKey])
+  .send()
+  .wait();
 // ----------------------- UPDATE SIDE-LOADED VKEY --------------------------------
 console.log('updating the side-loaded vkey...');
 const updateVkeyTx = await Mina.transaction(
@@ -189,6 +202,7 @@ equal(alexaBalanceAfterMint2, 500n);
 // ----------------------- UPDATE DYNAMIC PROOF CONFIG::AUTHORIZED
 //                         ::IGNORE::{requireMinaBalanceMatch, requireCustomTokenBalanceMatch, requireMinaNonceMatch} --------------------------------
 const flexibleDynamicProofConfig = new DynamicProofConfig({
+  shouldVerify: Bool(true),
   requireTokenIdMatch: Bool(true),
   requireMinaBalanceMatch: Bool(false),
   requireCustomTokenBalanceMatch: Bool(false),

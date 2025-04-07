@@ -100,10 +100,9 @@ const updateMintConfigTx = await Mina.transaction(
   async () => {
     await token.updatePackedMintConfig(
       new MintConfig({
-        publicMint: Bool(true),
-        fixedAmountMint: Bool(true),
-        rangeMint: Bool(false),
-        verifySideLoadedProof: Bool(false),
+        unauthorized: Bool(true),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(false),
       })
     );
   }

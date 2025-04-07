@@ -349,7 +349,7 @@ class FungibleToken extends TokenContract {
 
     const { fixedAmount, minAmount, maxAmount } = mintParams;
 
-    await this.ensureAdminSignature(mintConfig.publicMint.not());
+    await this.ensureAdminSignature(mintConfig.unauthorized.not());
 
     const magnitude = accountUpdate.body.balanceChange.magnitude;
 
@@ -360,7 +360,7 @@ class FungibleToken extends TokenContract {
     const isInRange = lowerBound.and(upperBound);
 
     const canMint = Provable.switch(
-      [mintConfig.fixedAmountMint, mintConfig.rangeMint],
+      [mintConfig.fixedAmount, mintConfig.rangedAmount],
       Bool,
       [isFixed, isInRange]
     );

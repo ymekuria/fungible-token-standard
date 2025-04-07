@@ -3,94 +3,94 @@ import { Bool, Field, Struct, UInt64 } from 'o1js';
 export { MintConfig, MintParams, DynamicProofConfig };
 
 /**
- * MintConfig defines the minting options for tokens.
+ * AmountConfig defines permission and constraint options for operations involving token amounts.
  *
- * @property publicMint - When true, the admin signature requirement is removed so any user can mint.
- * @property fixedAmountMint - When true, users can mint a fixed, predetermined amount of tokens (e.g., 200 tokens).
- * @property rangeMint - When true, users can mint a variable amount of tokens within a specified range.
+ * @property unauthorized - If true, disables the admin signature requirement, allowing any user to perform the operation.
+ * @property fixedAmount - If true, restricts the operation to a fixed, predetermined amount (e.g., 200 tokens).
+ * @property rangedAmount - If true, allows operating on a variable amount within a specified range.
  */
-class MintConfig extends Struct({
-  publicMint: Bool,
-  fixedAmountMint: Bool,
-  rangeMint: Bool,
+class AmountConfig extends Struct({
+  unauthorized: Bool,
+  fixedAmount: Bool,
+  rangedAmount: Bool,
 }) {
   /**
-   * Default mint configuration.
+   * Default configuration for amount-based operations.
    *
-   * By default, minting requires an admin signature (publicMint is false)
-   * and allows minting within a specified range (rangeMint is true).
-   *
-   * Fixed amount minting (fixedAmountMint) is disabled
+   * By default:
+   * - Authorization is required (`unauthorized` is false).
+   * - Fixed amount operations are disabled (`fixedAmount` is false).
+   * - Variable amount operations within a specified range are allowed (`rangedAmount` is true).
    */
   static default = new this({
-    publicMint: Bool(false),
-    fixedAmountMint: Bool(false),
-    rangeMint: Bool(true),
+    unauthorized: Bool(false),
+    fixedAmount: Bool(false),
+    rangedAmount: Bool(true),
   });
 
   /**
-   * Unpacks a Field value into a MintConfig instance.
+   * Unpacks a Field value into an AmountConfig instance.
    *
    * The packed Field is expected to contain 3 bits representing the following configuration flags:
-   * 1. publicMint
-   * 2. fixedAmountMint
-   * 3. rangeMint
+   * 1. unauthorized
+   * 2. fixedAmount
+   * 3. rangedAmount
    *
-   * @param packedMintConfig - The packed mint configuration as a Field.
-   * @returns A MintConfig instance with the unpacked configuration flags.
+   * @param packedAmountConfig - The packed amount configuration as a Field.
+   * @returns An AmountConfig instance with the unpacked configuration flags.
    */
-  static unpack(packedMintConfig: Field) {
-    const serializedMintConfig = packedMintConfig.toBits(3);
-    const [publicMint, fixedAmountMint, rangeMint] = serializedMintConfig;
+  static unpack(packedAmountConfig: Field) {
+    const serializedAmountConfig = packedAmountConfig.toBits(3);
+    const [unauthorized, fixedAmount, rangedAmount] = serializedAmountConfig;
 
     return new this({
-      publicMint,
-      fixedAmountMint,
-      rangeMint,
+      unauthorized,
+      fixedAmount,
+      rangedAmount,
     });
   }
 
   /**
-   * Packs the mint configuration into a single Field value.
+   * Packs the amount configuration into a single Field value.
    *
-   * Each boolean flag from the mint configuration is converted to its 1-bit representation,
+   * Each boolean flag from the amount configuration is converted to its 1-bit representation,
    * concatenated together, and then reassembled into a single Field.
    *
-   * @param mintConfig - The mint configuration to pack.
-   * @returns The packed mint configuration as a Field.
+   * @returns The packed amount configuration as a Field.
    */
   pack() {
-    const { publicMint, fixedAmountMint, rangeMint } = this;
+    const { unauthorized, fixedAmount, rangedAmount } = this;
 
-    const serializedMintConfig = [
-      publicMint.toField().toBits(1),
-      fixedAmountMint.toField().toBits(1),
-      rangeMint.toField().toBits(1),
+    const serializedAmountConfig = [
+      unauthorized.toField().toBits(1),
+      fixedAmount.toField().toBits(1),
+      rangedAmount.toField().toBits(1),
     ].flat();
 
-    const packedMintConfig = Field.fromBits(serializedMintConfig);
+    const packedAmountConfig = Field.fromBits(serializedAmountConfig);
 
-    return packedMintConfig;
+    return packedAmountConfig;
   }
 
   /**
-   * Validates the minting configuration to ensure that exactly one minting mode
-   * is enabled—either fixed amount mint or range mint. Throws an error if both
-   * or neither are enabled.
+   * Validates the amount configuration to ensure that exactly one mode is enabled—
+   * either fixed amount or ranged amount. Throws an error if both or neither are enabled.
    *
-   * @throws If neither or both `fixedAmountMint` and `rangeMint` are enabled.
+   * @throws If neither or both `fixedAmount` and `rangedAmount` are enabled.
    */
   validate() {
-    const { fixedAmountMint, rangeMint } = this;
-    fixedAmountMint
+    const { fixedAmount, rangedAmount } = this;
+    fixedAmount
       .toField()
-      .add(rangeMint.toField())
+      .add(rangedAmount.toField())
       .assertEquals(
         1,
-        'Exactly one of the fixed amount or range mint options must be enabled!'
+        'Exactly one of the fixed or ranged amount options must be enabled!'
       );
   }
 }
+
+class MintConfig extends AmountConfig {}
 
 /**
  * MintParams defines the parameters for token minting.
