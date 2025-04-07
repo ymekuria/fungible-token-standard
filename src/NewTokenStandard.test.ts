@@ -178,10 +178,8 @@ describe('New Token Standard Tests', () => {
           }
         );
 
-        tx.sign([deployer.key]);
-
         await tx.prove();
-        await tx.send();
+        await tx.sign([deployer.key]).send();
       };
 
       expect(initializeTx).rejects.toThrowError(
@@ -637,7 +635,12 @@ describe('New Token Standard Tests', () => {
       const burnTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.burn(user2, UInt64.from(100));
+          await tokenContract.burn(
+            user2,
+            UInt64.from(100),
+            dynamicProof,
+            programVkey
+          );
         }
       );
       await burnTx.prove();

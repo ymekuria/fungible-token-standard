@@ -61,7 +61,6 @@ class FungibleToken extends TokenContract {
   @state(Field) packedDynamicProofConfig = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
   @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
-  //TODO add state for `mintParams` -> requires data packing!
 
   readonly events = {
     SetAdmin: SetAdminEvent,
@@ -128,7 +127,7 @@ class FungibleToken extends TokenContract {
   }
 
   /** Update the verification key.
-   * This will only work when `allowUpdates` has been set to `true` during deployment.
+   * This will only work after a hardfork that increments the transaction version, the permission will be treated as `signature`.
    */
   @method
   async updateVerificationKey(vk: VerificationKey) {
@@ -197,7 +196,17 @@ class FungibleToken extends TokenContract {
   }
 
   @method.returns(AccountUpdate)
-  async burn(from: PublicKey, amount: UInt64): Promise<AccountUpdate> {
+  async burn(
+    from: PublicKey,
+    amount: UInt64,
+    proof: SideloadedProof,
+    vk: VerificationKey
+  ): Promise<AccountUpdate> {
+    const { verifySideLoadedProof } = MintConfig.unpack(
+      this.packedMintConfig.getAndRequireEquals()
+    );
+    await this.verifySideLoadedProof(proof, vk, verifySideLoadedProof, from);
+
     const accountUpdate = this.internal.burn({ address: from, amount });
     const circulationUpdate = AccountUpdate.create(
       this.address,
