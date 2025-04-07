@@ -8,13 +8,11 @@ export { MintConfig, MintParams, DynamicProofConfig };
  * @property publicMint - When true, the admin signature requirement is removed so any user can mint.
  * @property fixedAmountMint - When true, users can mint a fixed, predetermined amount of tokens (e.g., 200 tokens).
  * @property rangeMint - When true, users can mint a variable amount of tokens within a specified range.
- * @property verifySideLoadedProof - When true, a side-loaded proof is verified during the minting process.
  */
 class MintConfig extends Struct({
   publicMint: Bool,
   fixedAmountMint: Bool,
   rangeMint: Bool,
-  verifySideLoadedProof: Bool,
 }) {
   /**
    * Default mint configuration.
@@ -23,37 +21,32 @@ class MintConfig extends Struct({
    * and allows minting within a specified range (rangeMint is true).
    *
    * Fixed amount minting (fixedAmountMint) is disabled
-   * and side-loaded proof verification (verifySideLoadedProof) are disabled.
    */
   static default = new this({
     publicMint: Bool(false),
     fixedAmountMint: Bool(false),
     rangeMint: Bool(true),
-    verifySideLoadedProof: Bool(false),
   });
 
   /**
    * Unpacks a Field value into a MintConfig instance.
    *
-   * The packed Field is expected to contain 4 bits representing the following configuration flags:
+   * The packed Field is expected to contain 3 bits representing the following configuration flags:
    * 1. publicMint
    * 2. fixedAmountMint
    * 3. rangeMint
-   * 4. verifySideLoadedProof
    *
    * @param packedMintConfig - The packed mint configuration as a Field.
    * @returns A MintConfig instance with the unpacked configuration flags.
    */
   static unpack(packedMintConfig: Field) {
-    const serializedMintConfig = packedMintConfig.toBits(4);
-    const [publicMint, fixedAmountMint, rangeMint, verifySideLoadedProof] =
-      serializedMintConfig;
+    const serializedMintConfig = packedMintConfig.toBits(3);
+    const [publicMint, fixedAmountMint, rangeMint] = serializedMintConfig;
 
     return new this({
       publicMint,
       fixedAmountMint,
       rangeMint,
-      verifySideLoadedProof,
     });
   }
 
@@ -67,14 +60,12 @@ class MintConfig extends Struct({
    * @returns The packed mint configuration as a Field.
    */
   pack() {
-    const { publicMint, fixedAmountMint, rangeMint, verifySideLoadedProof } =
-      this;
+    const { publicMint, fixedAmountMint, rangeMint } = this;
 
     const serializedMintConfig = [
       publicMint.toField().toBits(1),
       fixedAmountMint.toField().toBits(1),
       rangeMint.toField().toBits(1),
-      verifySideLoadedProof.toField().toBits(1),
     ].flat();
 
     const packedMintConfig = Field.fromBits(serializedMintConfig);
@@ -182,6 +173,7 @@ class MintParams extends Struct({
  * This configuration dictates whether some checks are enforced and various elements captured during proof generation
  * must match the corresponding values at verification time.
  *
+ * @property shouldVerify - When true, a side-loaded proof is verified during the process.
  * @property requireTokenIdMatch - Enforces that the token ID in the public input must match the token ID in the public output.
  * @property requireMinaBalanceMatch - Enforces that the MINA balance captured during proof generation matches the balance read at verification.
  * @property requireCustomTokenBalanceMatch - Enforces that the custom token balance captured during proof generation matches the balance read at verification.
@@ -189,6 +181,7 @@ class MintParams extends Struct({
  * @property requireCustomTokenNonceMatch - Enforces that the custom token account nonce remains consistent between proof generation and verification.
  */
 class DynamicProofConfig extends Struct({
+  shouldVerify: Bool,
   requireTokenIdMatch: Bool,
   requireMinaBalanceMatch: Bool,
   requireCustomTokenBalanceMatch: Bool,
@@ -199,6 +192,7 @@ class DynamicProofConfig extends Struct({
    * The default dynamic proof configuration.
    *
    * By default:
+   * - Side-loaded proof verification (shouldVerify) is disabled.
    * - Token ID matching is enforced.
    * - MINA balance matching is not enforced.
    * - Custom token balance matching is not enforced.
@@ -206,6 +200,7 @@ class DynamicProofConfig extends Struct({
    * - Custom token nonce matching is enforced.
    */
   static default = new this({
+    shouldVerify: Bool(false),
     requireTokenIdMatch: Bool(true),
     requireMinaBalanceMatch: Bool(true),
     requireCustomTokenBalanceMatch: Bool(true),
@@ -216,7 +211,8 @@ class DynamicProofConfig extends Struct({
   /**
    * Unpacks a Field value into a DynamicProofConfig instance.
    *
-   * The packed Field is expected to contain 5 bits corresponding to:
+   * The packed Field is expected to contain 6 bits corresponding to:
+   * - shouldVerify
    * - requireTokenIdMatch
    * - requireMinaBalanceMatch
    * - requireCustomTokenBalanceMatch
@@ -227,8 +223,9 @@ class DynamicProofConfig extends Struct({
    * @returns A new DynamicProofConfig instance with the unpacked configuration flags.
    */
   static unpack(packedDynamicProofConfig: Field) {
-    const serializedDynamicProofConfig = packedDynamicProofConfig.toBits(5);
+    const serializedDynamicProofConfig = packedDynamicProofConfig.toBits(6);
     const [
+      shouldVerify,
       requireTokenIdMatch,
       requireMinaBalanceMatch,
       requireCustomTokenBalanceMatch,
@@ -237,6 +234,7 @@ class DynamicProofConfig extends Struct({
     ] = serializedDynamicProofConfig;
 
     return new this({
+      shouldVerify,
       requireTokenIdMatch,
       requireMinaBalanceMatch,
       requireCustomTokenBalanceMatch,
@@ -256,6 +254,7 @@ class DynamicProofConfig extends Struct({
    */
   pack() {
     const {
+      shouldVerify,
       requireTokenIdMatch,
       requireMinaBalanceMatch,
       requireCustomTokenBalanceMatch,
@@ -264,6 +263,7 @@ class DynamicProofConfig extends Struct({
     } = this;
 
     const serializedDynamicProofConfig = [
+      shouldVerify.toField().toBits(1),
       requireTokenIdMatch.toField().toBits(1),
       requireMinaBalanceMatch.toField().toBits(1),
       requireCustomTokenBalanceMatch.toField().toBits(1),

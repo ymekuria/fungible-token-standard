@@ -169,10 +169,7 @@ class FungibleToken extends TokenContract {
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const mintParams = MintParams.unpack(packedMintParams);
 
-    const { canMint, shouldVerifyProof } = await this.canMint(
-      accountUpdate,
-      mintParams
-    );
+    const canMint = await this.canMint(accountUpdate, mintParams);
     canMint.assertTrue(FungibleTokenErrors.noPermissionToMint);
 
     recipient
@@ -190,7 +187,7 @@ class FungibleToken extends TokenContract {
 
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount);
 
-    await this.verifySideLoadedProof(proof, vk, shouldVerifyProof, recipient);
+    await this.verifySideLoadedProof(proof, vk, recipient);
 
     return accountUpdate;
   }
@@ -202,10 +199,7 @@ class FungibleToken extends TokenContract {
     proof: SideloadedProof,
     vk: VerificationKey
   ): Promise<AccountUpdate> {
-    const { verifySideLoadedProof } = MintConfig.unpack(
-      this.packedMintConfig.getAndRequireEquals()
-    );
-    await this.verifySideLoadedProof(proof, vk, verifySideLoadedProof, from);
+    await this.verifySideLoadedProof(proof, vk, from);
 
     const accountUpdate = this.internal.burn({ address: from, amount });
     const circulationUpdate = AccountUpdate.create(
@@ -371,13 +365,12 @@ class FungibleToken extends TokenContract {
       [isFixed, isInRange]
     );
 
-    return { canMint, shouldVerifyProof: mintConfig.verifySideLoadedProof };
+    return canMint;
   }
 
   private async verifySideLoadedProof(
     proof: SideloadedProof,
     vk: VerificationKey,
-    shouldVerifyProof: Bool,
     recipient: PublicKey
   ) {
     const packedDynamicProofConfig =
@@ -386,6 +379,7 @@ class FungibleToken extends TokenContract {
       packedDynamicProofConfig
     );
     const {
+      shouldVerify,
       requireTokenIdMatch,
       requireMinaBalanceMatch,
       requireCustomTokenBalanceMatch,
@@ -395,7 +389,7 @@ class FungibleToken extends TokenContract {
 
     // Ensure the provided side-loaded verification key hash matches the stored on-chain state.
     const isVKeyValid = Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       vk.hash.equals(this.vKey.getAndRequireEquals()),
       Bool(true)
     );
@@ -405,7 +399,7 @@ class FungibleToken extends TokenContract {
 
     // Check that the address in the proof corresponds to the recipient passed by the provable method.
     const isRecipientValid = Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       address.equals(recipient),
       Bool(true)
     );
@@ -423,7 +417,7 @@ class FungibleToken extends TokenContract {
     // Verify that the tokenId provided in the public input matches the tokenId in the public output,
     // unless token ID matching is not enforced.
     Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       tokenIdAccountData.tokenId
         .equals(this.deriveTokenId())
         .or(requireTokenIdMatch.not()),
@@ -432,7 +426,7 @@ class FungibleToken extends TokenContract {
 
     // Ensure the MINA account data uses native MINA.
     Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       minaAccountData.tokenId.equals(1),
       Bool(true)
     ).assertTrue('Incorrect token ID; expected native MINA.');
@@ -440,7 +434,7 @@ class FungibleToken extends TokenContract {
     // Verify that the MINA balance captured during proof generation matches the current on-chain balance at verification.
     // unless balance matching is not enforced.
     Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       minaAccountData.account.balance
         .get()
         .equals(minaBalance)
@@ -451,7 +445,7 @@ class FungibleToken extends TokenContract {
     // Verify that the CUSTOM TOKEN balance captured during proof generation matches the current on-chain balance at verification.
     // unless balance matching is not enforced.
     Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       tokenIdAccountData.account.balance
         .get()
         .equals(tokenIdBalance)
@@ -462,7 +456,7 @@ class FungibleToken extends TokenContract {
     // Verify that the MINA account nonce captured during proof generation matches the nonce at verification.
     // unless nonce matching is not enforced.
     Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       minaAccountData.account.nonce
         .get()
         .equals(minaNonce)
@@ -473,7 +467,7 @@ class FungibleToken extends TokenContract {
     // Verify that the CUSTOM TOKEN nonce captured during proof generation matches the nonce at verification.
     // unless nonce matching is not enforced.
     Provable.if(
-      shouldVerifyProof,
+      shouldVerify,
       tokenIdAccountData.account.nonce
         .get()
         .equals(tokenIdNonce)
@@ -482,7 +476,7 @@ class FungibleToken extends TokenContract {
     ).assertTrue('Mismatch in Custom token account nonce!');
 
     // Conditionally verify the provided side-loaded proof.
-    proof.verifyIf(vk, shouldVerifyProof);
+    proof.verifyIf(vk, shouldVerify);
   }
 }
 

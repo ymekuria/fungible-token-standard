@@ -65,6 +65,7 @@ describe('New Token Standard Tests', () => {
     });
 
     dynamicProofConfig = new DynamicProofConfig({
+      shouldVerify: Bool(false),
       requireTokenIdMatch: Bool(true),
       requireMinaBalanceMatch: Bool(true),
       requireCustomTokenBalanceMatch: Bool(true),
@@ -221,7 +222,6 @@ describe('New Token Standard Tests', () => {
         publicMint: Bool(true),
         fixedAmountMint: Bool(true),
         rangeMint: Bool(true),
-        verifySideLoadedProof: Bool(false),
       });
 
       const initializeTx = async () => {
@@ -324,7 +324,6 @@ describe('New Token Standard Tests', () => {
             publicMint: Bool(true),
             fixedAmountMint: Bool(true),
             rangeMint: Bool(true),
-            verifySideLoadedProof: Bool(false),
           });
           const tx = async () =>
             updateMintConfigTx(user1, mintConfig, [user1.key, tokenAdmin.key]);
@@ -339,7 +338,6 @@ describe('New Token Standard Tests', () => {
             publicMint: Bool(true),
             fixedAmountMint: Bool(true),
             rangeMint: Bool(false),
-            verifySideLoadedProof: Bool(false),
           });
           const tx = async () =>
             updateMintConfigTx(user2, mintConfig, [user2.key]);
@@ -354,7 +352,6 @@ describe('New Token Standard Tests', () => {
             publicMint: Bool(true),
             fixedAmountMint: Bool(true),
             rangeMint: Bool(false),
-            verifySideLoadedProof: Bool(false),
           });
 
           await updateMintConfigTx(user2, mintConfig, [
@@ -441,15 +438,31 @@ describe('New Token Standard Tests', () => {
   });
 
   describe('Mint Config: Authorized/Range/SLVerify Mint', () => {
-    it('should update mintConfig with Authorized / Range / SLVerify settings', async () => {
+    it('should update mintConfig and proofConfig for Authorized / Range / SLVerify settings', async () => {
       const mintConfig = new MintConfig({
         publicMint: Bool(true),
         fixedAmountMint: Bool(true),
         rangeMint: Bool(false),
-        verifySideLoadedProof: Bool(true),
       });
 
       await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);
+
+      let dynamicProofConfig = DynamicProofConfig.default;
+      dynamicProofConfig.shouldVerify = Bool(true);
+
+      const updatePackedDynamicProofConfigTx = await Mina.transaction(
+        { sender: user2, fee },
+        async () => {
+          await tokenContract.updatePackedDynamicProofConfig(
+            dynamicProofConfig
+          );
+        }
+      );
+      await updatePackedDynamicProofConfigTx.prove();
+      await updatePackedDynamicProofConfigTx
+        .sign([user2.key, tokenAdmin.key])
+        .send()
+        .wait();
 
       expect(tokenContract.packedMintConfig.get()).toEqual(mintConfig.pack());
     });
