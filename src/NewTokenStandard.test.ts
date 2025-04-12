@@ -144,7 +144,7 @@ describe('New Token Standard Tests', () => {
     const updateMintParamsTx = await Mina.transaction(
       { sender: user, fee },
       async () => {
-        await tokenContract.updatePackedMintParams(mintParams);
+        await tokenContract.updateMintParams(mintParams);
       }
     );
     await updateMintParamsTx.prove();

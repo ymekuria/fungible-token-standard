@@ -21,8 +21,9 @@ import {
 } from 'o1js';
 import {
   MintConfig,
-  BurnConfig,
   MintParams,
+  BurnConfig,
+  BurnParams,
   DynamicProofConfig,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
@@ -63,6 +64,7 @@ class FungibleToken extends TokenContract {
   @state(PublicKey) admin = State<PublicKey>();
   @state(Field) packedAmountConfigs = State<Field>();
   @state(Field) packedMintParams = State<Field>();
+  @state(Field) packedBurnParams = State<Field>();
   @state(Field) packedDynamicProofConfig = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
   @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
@@ -333,11 +335,19 @@ class FungibleToken extends TokenContract {
   }
 
   @method
-  async updatePackedMintParams(mintParams: MintParams) {
+  async updateMintParams(mintParams: MintParams) {
     this.ensureAdminSignature(Bool(true));
     mintParams.validate();
 
     this.packedMintParams.set(mintParams.pack());
+  }
+
+  @method
+  async updateBurnParams(burnParams: BurnParams) {
+    this.ensureAdminSignature(Bool(true));
+    burnParams.validate();
+
+    this.packedBurnParams.set(burnParams.pack());
   }
 
   @method

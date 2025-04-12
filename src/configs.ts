@@ -1,6 +1,6 @@
 import { Bool, Field, Struct, UInt64 } from 'o1js';
 
-export { MintConfig, BurnConfig, MintParams, DynamicProofConfig };
+export { MintConfig, BurnConfig, MintParams, BurnParams, DynamicProofConfig };
 
 /**
  * `MintConfig` defines the permission and constraint settings for minting tokens.
@@ -314,6 +314,81 @@ class MintParams extends Struct({
   validate() {
     const { minAmount, maxAmount } = this;
     minAmount.assertLessThan(maxAmount, 'Invalid mint range!');
+  }
+}
+
+/**
+ * MintParams defines the parameters for token minting.
+ *
+ * @property fixedAmount - The fixed amount of tokens to burn, if applicable.
+ * @property minAmount - The minimum number of tokens that can be burned in a ranged mint.
+ * @property maxAmount - The maximum number of tokens that can be burned in a ranged mint.
+ */
+class BurnParams extends Struct({
+  fixedAmount: UInt64,
+  minAmount: UInt64,
+  maxAmount: UInt64,
+}) {
+  /**
+   * Unpacks a Field value into a BurnParams instance.
+   *
+   * The packed Field is expected to be composed of three concatenated 64-bit segments representing:
+   * - fixedAmount,
+   * - minAmount, and
+   * - maxAmount.
+   *
+   * Each segment is converted back into a UInt64 value.
+   *
+   * @param packedBurnParams - The packed burn parameters as a Field.
+   * @returns A new BurnParams instance with the unpacked fixed, minimum, and maximum amounts.
+   */
+  static unpack(packedBurnParams: Field) {
+    const serializedBurnParams = packedBurnParams.toBits(64 * 3);
+
+    const fixedAmount = UInt64.fromBits(serializedBurnParams.slice(0, 64));
+    const minAmount = UInt64.fromBits(serializedBurnParams.slice(64, 64 * 2));
+    const maxAmount = UInt64.fromBits(
+      serializedBurnParams.slice(64 * 2, 64 * 3)
+    );
+
+    return new this({
+      fixedAmount,
+      minAmount,
+      maxAmount,
+    });
+  }
+
+  /**
+   * Packs the burn parameters into a single Field value.
+   *
+   * Each burn parameter (fixedAmount, minAmount, and maxAmount) is converted into a 64-bit representation,
+   * concatenated, and then assembled into one Field.
+   *
+   * @param burnParams - The burn parameters to pack.
+   * @returns The packed burn parameters as a Field.
+   */
+  pack() {
+    const { fixedAmount, minAmount, maxAmount } = this;
+    const serializedBurnParams = [
+      fixedAmount.toBits(),
+      minAmount.toBits(),
+      maxAmount.toBits(),
+    ].flat();
+
+    const packedBurnParams = Field.fromBits(serializedBurnParams);
+
+    return packedBurnParams;
+  }
+
+  /**
+   * Validates that the burn range is correctly configured by asserting that
+   * `minAmount` is less than `maxAmount`.
+   *
+   * @throws If `minAmount` is not less than `maxAmount`.
+   */
+  validate() {
+    const { minAmount, maxAmount } = this;
+    minAmount.assertLessThan(maxAmount, 'Invalid burn range!');
   }
 }
 
