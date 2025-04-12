@@ -19,7 +19,12 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { MintConfig, MintParams, DynamicProofConfig } from './configs.js';
+import {
+  MintConfig,
+  BurnConfig,
+  MintParams,
+  DynamicProofConfig,
+} from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
 export {
@@ -56,7 +61,7 @@ const FungibleTokenErrors = {
 class FungibleToken extends TokenContract {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
-  @state(Field) packedMintConfig = State<Field>();
+  @state(Field) packedAmountConfigs = State<Field>();
   @state(Field) packedMintParams = State<Field>();
   @state(Field) packedDynamicProofConfig = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
@@ -101,6 +106,7 @@ class FungibleToken extends TokenContract {
     decimals: UInt8,
     mintConfig: MintConfig,
     mintParams: MintParams,
+    burnConfig: BurnConfig,
     dynamicProofConfig: DynamicProofConfig
   ) {
     this.account.provedState.requireEquals(Bool(false));
@@ -109,17 +115,19 @@ class FungibleToken extends TokenContract {
     this.decimals.set(decimals);
 
     mintConfig.validate();
-    this.packedMintConfig.set(mintConfig.pack());
+    this.packedAmountConfigs.set(mintConfig.packConfigs(burnConfig));
+
     mintParams.validate();
     this.packedMintParams.set(mintParams.pack());
+
     this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
 
     const accountUpdate = AccountUpdate.createSigned(
       this.address,
       this.deriveTokenId()
     );
-    let permissions = Permissions.default();
 
+    let permissions = Permissions.default();
     // This is necessary in order to allow token holders to burn.
     permissions.send = Permissions.none();
     permissions.setPermissions = Permissions.impossible();
@@ -166,6 +174,7 @@ class FungibleToken extends TokenContract {
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
 
+    //TODO move mintParams inside the `canMint`
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const mintParams = MintParams.unpack(packedMintParams);
 
@@ -310,8 +319,8 @@ class FungibleToken extends TokenContract {
     //! maybe enforce that sender is admin instead of approving with an admin signature
     this.ensureAdminSignature(Bool(true));
     mintConfig.validate();
-
-    this.packedMintConfig.set(mintConfig.pack());
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    this.packedAmountConfigs.set(mintConfig.updatePackedConfigs(packedConfigs));
   }
 
   @method
@@ -344,8 +353,8 @@ class FungibleToken extends TokenContract {
   }
 
   private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
-    const packedMintConfig = this.packedMintConfig.getAndRequireEquals();
-    const mintConfig = MintConfig.unpack(packedMintConfig);
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const mintConfig = MintConfig.unpack(packedConfigs);
 
     const { fixedAmount, minAmount, maxAmount } = mintParams;
 

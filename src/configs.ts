@@ -1,26 +1,31 @@
 import { Bool, Field, Struct, UInt64 } from 'o1js';
 
-export { MintConfig, MintParams, DynamicProofConfig };
+export { MintConfig, BurnConfig, MintParams, DynamicProofConfig };
 
 /**
- * AmountConfig defines permission and constraint options for operations involving token amounts.
+ * `MintConfig` defines the permission and constraint settings for minting tokens.
  *
- * @property unauthorized - If true, disables the admin signature requirement, allowing any user to perform the operation.
- * @property fixedAmount - If true, restricts the operation to a fixed, predetermined amount (e.g., 200 tokens).
- * @property rangedAmount - If true, allows operating on a variable amount within a specified range.
+ * This configuration determines whether a minting operation:
+ * - requires authorization,
+ * - allows minting a fixed amount, or
+ * - supports minting a variable amount within a specified range.
+ *
+ * @property unauthorized - If true, disables the admin signature requirement, allowing any user to mint.
+ * @property fixedAmount - If true, restricts minting to a fixed, predetermined amount (e.g., 200 tokens).
+ * @property rangedAmount - If true, allows minting a variable amount within a specified range.
  */
-class AmountConfig extends Struct({
+class MintConfig extends Struct({
   unauthorized: Bool,
   fixedAmount: Bool,
   rangedAmount: Bool,
 }) {
   /**
-   * Default configuration for amount-based operations.
+   * The default mint configuration.
    *
    * By default:
-   * - Authorization is required (`unauthorized` is false).
-   * - Fixed amount operations are disabled (`fixedAmount` is false).
-   * - Variable amount operations within a specified range are allowed (`rangedAmount` is true).
+   * - Authorization is required (`unauthorized = false`)
+   * - Fixed amount minting is disabled
+   * - Ranged amount minting is enabled
    */
   static default = new this({
     unauthorized: Bool(false),
@@ -29,19 +34,18 @@ class AmountConfig extends Struct({
   });
 
   /**
-   * Unpacks a Field value into an AmountConfig instance.
+   * Unpacks the `packedConfigs` field and returns only the `MintConfig` portion.
    *
-   * The packed Field is expected to contain 3 bits representing the following configuration flags:
-   * 1. unauthorized
-   * 2. fixedAmount
-   * 3. rangedAmount
+   * The input `Field` is expected to encode both mint and burn configurations:
+   * - Bits 0–2: represent the mint configuration (`unauthorized`, `fixedAmount`, `rangedAmount`)
+   * - Bits 3–5: represent the burn configuration (ignored in this method)
    *
-   * @param packedAmountConfig - The packed amount configuration as a Field.
-   * @returns An AmountConfig instance with the unpacked configuration flags.
+   * @param packedConfigs - A 6-bit `Field` containing both mint and burn configurations.
+   * @returns A `MintConfig` instance constructed from the first 3 bits of the field.
    */
-  static unpack(packedAmountConfig: Field) {
-    const serializedAmountConfig = packedAmountConfig.toBits(3);
-    const [unauthorized, fixedAmount, rangedAmount] = serializedAmountConfig;
+  static unpack(packedConfigs: Field) {
+    const serializedMintConfig = packedConfigs.toBits(6).slice(0, 3);
+    const [unauthorized, fixedAmount, rangedAmount] = serializedMintConfig;
 
     return new this({
       unauthorized,
@@ -51,32 +55,60 @@ class AmountConfig extends Struct({
   }
 
   /**
-   * Packs the amount configuration into a single Field value.
+   * Serializes the mint configuration into an array of 3 boolean bits.
    *
-   * Each boolean flag from the amount configuration is converted to its 1-bit representation,
-   * concatenated together, and then reassembled into a single Field.
-   *
-   * @returns The packed amount configuration as a Field.
+   * @returns An array of `Bool` bits representing this configuration.
    */
-  pack() {
+  toBits() {
     const { unauthorized, fixedAmount, rangedAmount } = this;
 
-    const serializedAmountConfig = [
+    const serializedMintConfig = [
       unauthorized.toField().toBits(1),
       fixedAmount.toField().toBits(1),
       rangedAmount.toField().toBits(1),
     ].flat();
 
-    const packedAmountConfig = Field.fromBits(serializedAmountConfig);
-
-    return packedAmountConfig;
+    return serializedMintConfig;
   }
 
   /**
-   * Validates the amount configuration to ensure that exactly one mode is enabled—
-   * either fixed amount or ranged amount. Throws an error if both or neither are enabled.
+   * Updates the `packedConfigs` (containing both mint and burn configs)
+   * by replacing the first 3 bits (mint config) with the bits from this instance.
    *
-   * @throws If neither or both `fixedAmount` and `rangedAmount` are enabled.
+   * The last 3 bits (burn config) are preserved.
+   *
+   * @param packedConfigs - A `Field` containing both mint and burn configuration bits.
+   * @returns A new `Field` with updated mint config and preserved burn config.
+   */
+  updatePackedConfigs(packedConfigs: Field) {
+    const serializedConfigs = packedConfigs.toBits(6);
+    const serializedMintConfig = this.toBits();
+
+    const updatedPackedConfigs = Field.fromBits([
+      ...serializedMintConfig,
+      ...serializedConfigs.slice(3, 6),
+    ]);
+
+    return updatedPackedConfigs;
+  }
+
+  /**
+   * Packs this mint configuration together with a provided burn configuration
+   * into a single 6-bit `Field`.
+   *
+   * The first 3 bits represent the mint config, and the last 3 bits represent the burn config.
+   *
+   * @param burnConfig - The burn configuration to combine with this mint config.
+   * @returns A packed `Field` containing both configs.
+   */
+  packConfigs(burnConfig: BurnConfig): Field {
+    return Field.fromBits([...this.toBits(), ...burnConfig.toBits()]);
+  }
+
+  /**
+   * Validates that exactly one minting mode is enabled—either fixed or ranged.
+   *
+   * @throws If both or neither `fixedAmount` and `rangedAmount` are enabled.
    */
   validate() {
     const { fixedAmount, rangedAmount } = this;
@@ -90,7 +122,125 @@ class AmountConfig extends Struct({
   }
 }
 
-class MintConfig extends AmountConfig {}
+/**
+ * `BurnConfig` defines the permission and constraint settings for burning tokens.
+ *
+ * This configuration determines whether a burn operation:
+ * - requires authorization,
+ * - is restricted to a fixed amount, or
+ * - supports a variable amount within a defined range.
+ *
+ * @property unauthorized - If true, disables the admin signature requirement, allowing any user to burn.
+ * @property fixedAmount - If true, restricts burning to a fixed, predetermined amount (e.g., 200 tokens).
+ * @property rangedAmount - If true, allows burning a variable amount within a specified range.
+ */
+class BurnConfig extends Struct({
+  unauthorized: Bool,
+  fixedAmount: Bool,
+  rangedAmount: Bool,
+}) {
+  /**
+   * The default burn configuration.
+   *
+   * By default:
+   * - Authorization is not required (`unauthorized = true`)
+   * - Fixed amount burning is disabled
+   * - Ranged amount burning is enabled
+   */
+  static default = new this({
+    unauthorized: Bool(true),
+    fixedAmount: Bool(false),
+    rangedAmount: Bool(true),
+  });
+
+  /**
+   * Unpacks the `packedConfigs` field and returns only the `BurnConfig` portion.
+   *
+   * The input `Field` is expected to contain both mint and burn configurations:
+   * - Bits 0–2: represent the mint config (ignored here)
+   * - Bits 3–5: represent the burn config (`unauthorized`, `fixedAmount`, `rangedAmount`)
+   *
+   * @param packedConfigs - A `Field` containing 6 bits: 3 for mint config and 3 for burn config.
+   * @returns A `BurnConfig` instance constructed from bits 3–5.
+   */
+  static unpack(packedConfigs: Field) {
+    const serializedBurnConfig = packedConfigs.toBits(6).slice(3, 6);
+    const [unauthorized, fixedAmount, rangedAmount] = serializedBurnConfig;
+
+    return new this({
+      unauthorized,
+      fixedAmount,
+      rangedAmount,
+    });
+  }
+
+  /**
+   * Serializes the burn configuration into an array of 3 `Bool` bits.
+   *
+   * @returns An array of bits representing the configuration.
+   */
+  toBits() {
+    const { unauthorized, fixedAmount, rangedAmount } = this;
+
+    const serializedAmountConfig = [
+      unauthorized.toField().toBits(1),
+      fixedAmount.toField().toBits(1),
+      rangedAmount.toField().toBits(1),
+    ].flat();
+
+    return serializedAmountConfig;
+  }
+
+  /**
+   * Updates the `packedConfigs` (containing both mint and burn configs)
+   * by replacing the last 3 bits (mint config) with the bits from this instance.
+   *
+   * The first 3 bits (mint config) are preserved.
+   *
+   * @param packedConfigs - A `Field` containing both mint and burn configuration bits.
+   * @returns A new `Field` with updated burn config and preserved mint config.
+   */
+  updatePackedConfigs(packedConfigs: Field) {
+    const serializedConfigs = packedConfigs.toBits(6);
+    const serializedBurnConfig = this.toBits();
+
+    const updatedPackedConfigs = Field.fromBits([
+      ...serializedConfigs.slice(0, 3),
+      ...serializedBurnConfig,
+    ]);
+
+    return updatedPackedConfigs;
+  }
+
+  /**
+   * Validates that exactly one burn mode is enabled—either fixed or ranged.
+   *
+   * @throws If both or neither `fixedAmount` and `rangedAmount` are enabled.
+   */
+  validate() {
+    const { fixedAmount, rangedAmount } = this;
+    fixedAmount
+      .toField()
+      .add(rangedAmount.toField())
+      .assertEquals(
+        1,
+        'Exactly one of the fixed or ranged amount options must be enabled!'
+      );
+  }
+
+  /**
+   * Packs this burn configuration together with a provided mint configuration
+   * into a single 6-bit `Field`.
+   *
+   * The first 3 bits represent the mint config, and the last 3 bits represent the burn config.
+   *
+   * @param mintConfig - The `MintConfig` instance to pack alongside this `BurnConfig`.
+   * @returns A packed `Field` containing both mint and burn configs.
+   */
+  packConfigs(mintConfig: BurnConfig): Field {
+    return Field.fromBits([...mintConfig.toBits(), ...this.toBits()]);
+  }
+}
 
 /**
  * MintParams defines the parameters for token minting.

@@ -9,7 +9,12 @@ import {
   UInt8,
 } from 'o1js';
 import { FungibleToken } from '../NewTokenStandard.js';
-import { DynamicProofConfig, MintConfig, MintParams } from '../configs.js';
+import {
+  BurnConfig,
+  DynamicProofConfig,
+  MintConfig,
+  MintParams,
+} from '../configs.js';
 import {
   program,
   generateDummyDynamicProof,
@@ -64,6 +69,7 @@ const deployTx = await Mina.transaction(
       UInt8.from(9),
       MintConfig.default,
       mintParams,
+      BurnConfig.default,
       DynamicProofConfig.default
     );
   }

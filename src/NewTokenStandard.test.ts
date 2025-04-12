@@ -10,7 +10,12 @@ import {
   VerificationKey,
 } from 'o1js';
 import { FungibleToken } from './NewTokenStandard.js';
-import { DynamicProofConfig, MintConfig, MintParams } from './configs.js';
+import {
+  BurnConfig,
+  DynamicProofConfig,
+  MintConfig,
+  MintParams,
+} from './configs.js';
 import {
   program,
   generateDummyDynamicProof,
@@ -174,6 +179,7 @@ describe('New Token Standard Tests', () => {
               UInt8.from(9),
               mintConfig,
               mintParams,
+              BurnConfig.default,
               dynamicProofConfig
             );
           }
@@ -204,6 +210,7 @@ describe('New Token Standard Tests', () => {
               UInt8.from(9),
               mintConfig,
               invalidMintParams,
+              BurnConfig.default,
               dynamicProofConfig
             );
           }
@@ -233,6 +240,7 @@ describe('New Token Standard Tests', () => {
               UInt8.from(9),
               invalidMintConfig,
               mintParams,
+              BurnConfig.default,
               dynamicProofConfig
             );
           }
@@ -255,6 +263,7 @@ describe('New Token Standard Tests', () => {
           UInt8.from(9),
           mintConfig,
           mintParams,
+          BurnConfig.default,
           dynamicProofConfig
         );
       });
@@ -277,6 +286,7 @@ describe('New Token Standard Tests', () => {
               UInt8.from(9),
               mintConfig,
               mintParams,
+              BurnConfig.default,
               dynamicProofConfig
             );
           }
@@ -359,9 +369,9 @@ describe('New Token Standard Tests', () => {
             tokenAdmin.key,
           ]);
 
-          expect(tokenContract.packedMintConfig.get()).toEqual(
-            mintConfig.pack()
-          );
+          expect(
+            MintConfig.unpack(tokenContract.packedAmountConfigs.get())
+          ).toEqual(mintConfig);
         });
       });
 
@@ -464,7 +474,9 @@ describe('New Token Standard Tests', () => {
         .send()
         .wait();
 
-      expect(tokenContract.packedMintConfig.get()).toEqual(mintConfig.pack());
+      expect(
+        MintConfig.unpack(tokenContract.packedAmountConfigs.get())
+      ).toEqual(mintConfig);
     });
 
     it('should reject updating SL vKey when unauthorized by the admin', async () => {

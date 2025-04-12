@@ -1,7 +1,12 @@
 import { equal } from 'node:assert';
 import { AccountUpdate, Bool, Mina, PrivateKey, UInt64, UInt8 } from 'o1js';
 import { FungibleToken } from './NewTokenStandard.js';
-import { MintConfig, MintParams, DynamicProofConfig } from './configs.js';
+import {
+  MintConfig,
+  BurnConfig,
+  MintParams,
+  DynamicProofConfig,
+} from './configs.js';
 import {
   generateDummyDynamicProof,
   program,
@@ -50,6 +55,7 @@ const deployTx = await Mina.transaction(
       UInt8.from(9),
       MintConfig.default,
       mintParams,
+      BurnConfig.default,
       DynamicProofConfig.default
     );
   }
