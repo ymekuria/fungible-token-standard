@@ -315,12 +315,21 @@ class FungibleToken extends TokenContract {
   }
 
   @method
-  async updatePackedMintConfig(mintConfig: MintConfig) {
+  async updateMintConfig(mintConfig: MintConfig) {
     //! maybe enforce that sender is admin instead of approving with an admin signature
     this.ensureAdminSignature(Bool(true));
     mintConfig.validate();
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     this.packedAmountConfigs.set(mintConfig.updatePackedConfigs(packedConfigs));
+  }
+
+  @method
+  async updateBurnConfig(burnConfig: BurnConfig) {
+    //! maybe enforce that sender is admin instead of approving with an admin signature
+    this.ensureAdminSignature(Bool(true));
+    burnConfig.validate();
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    this.packedAmountConfigs.set(burnConfig.updatePackedConfigs(packedConfigs));
   }
 
   @method
