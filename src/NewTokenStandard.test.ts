@@ -12,6 +12,7 @@ import {
 import { FungibleToken } from './NewTokenStandard.js';
 import {
   BurnConfig,
+  BurnParams,
   DynamicProofConfig,
   MintConfig,
   MintParams,
@@ -35,6 +36,7 @@ describe('New Token Standard Tests', () => {
     tokenContract: FungibleToken,
     mintConfig: MintConfig,
     mintParams: MintParams,
+    burnParams: BurnParams,
     dynamicProofConfig: DynamicProofConfig,
     dummyVkey: VerificationKey,
     dummyProof: SideloadedProof,
@@ -67,6 +69,12 @@ describe('New Token Standard Tests', () => {
       fixedAmount: UInt64.from(200),
       minAmount: UInt64.from(0),
       maxAmount: UInt64.from(1000),
+    });
+
+    burnParams = new BurnParams({
+      fixedAmount: UInt64.from(500),
+      minAmount: UInt64.from(100),
+      maxAmount: UInt64.from(1500),
     });
 
     dynamicProofConfig = new DynamicProofConfig({
@@ -180,6 +188,7 @@ describe('New Token Standard Tests', () => {
               mintConfig,
               mintParams,
               BurnConfig.default,
+              burnParams,
               dynamicProofConfig
             );
           }
@@ -211,6 +220,7 @@ describe('New Token Standard Tests', () => {
               mintConfig,
               invalidMintParams,
               BurnConfig.default,
+              burnParams,
               dynamicProofConfig
             );
           }
@@ -241,6 +251,8 @@ describe('New Token Standard Tests', () => {
               invalidMintConfig,
               mintParams,
               BurnConfig.default,
+              burnParams,
+
               dynamicProofConfig
             );
           }
@@ -264,6 +276,7 @@ describe('New Token Standard Tests', () => {
           mintConfig,
           mintParams,
           BurnConfig.default,
+          burnParams,
           dynamicProofConfig
         );
       });
@@ -287,6 +300,7 @@ describe('New Token Standard Tests', () => {
               mintConfig,
               mintParams,
               BurnConfig.default,
+              burnParams,
               dynamicProofConfig
             );
           }

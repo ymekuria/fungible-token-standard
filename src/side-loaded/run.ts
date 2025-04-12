@@ -11,6 +11,7 @@ import {
 import { FungibleToken } from '../NewTokenStandard.js';
 import {
   BurnConfig,
+  BurnParams,
   DynamicProofConfig,
   MintConfig,
   MintParams,
@@ -51,6 +52,12 @@ const mintParams = new MintParams({
   maxAmount: UInt64.from(1000),
 });
 
+const burnParams = new BurnParams({
+  fixedAmount: UInt64.from(500),
+  minAmount: UInt64.from(100),
+  maxAmount: UInt64.from(1500),
+});
+
 // ----------------------- DEPLOY --------------------------------
 console.log('Deploying token contract.');
 const deployTx = await Mina.transaction(
@@ -70,6 +77,7 @@ const deployTx = await Mina.transaction(
       MintConfig.default,
       mintParams,
       BurnConfig.default,
+      burnParams,
       DynamicProofConfig.default
     );
   }

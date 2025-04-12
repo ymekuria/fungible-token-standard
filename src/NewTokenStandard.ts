@@ -49,6 +49,7 @@ const FungibleTokenErrors = {
   noAdminKey: 'could not fetch admin contract key',
   noPermissionToChangeAdmin: 'Not allowed to change admin contract',
   noPermissionToMint: 'Not allowed to mint tokens',
+  noPermissionToBurn: 'Not allowed to burn tokens',
   noPermissionToPause: 'Not allowed to pause token',
   noPermissionToResume: 'Not allowed to resume token',
   noTransferFromCirculation: "Can't transfer to/from the circulation account",
@@ -109,6 +110,7 @@ class FungibleToken extends TokenContract {
     mintConfig: MintConfig,
     mintParams: MintParams,
     burnConfig: BurnConfig,
+    burnParams: BurnParams,
     dynamicProofConfig: DynamicProofConfig
   ) {
     this.account.provedState.requireEquals(Bool(false));
@@ -121,6 +123,9 @@ class FungibleToken extends TokenContract {
 
     mintParams.validate();
     this.packedMintParams.set(mintParams.pack());
+
+    burnParams.validate();
+    this.packedBurnParams.set(burnParams.pack());
 
     this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
 
@@ -176,7 +181,6 @@ class FungibleToken extends TokenContract {
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
 
-    //TODO move mintParams inside the `canMint`
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const mintParams = MintParams.unpack(packedMintParams);
 
@@ -210,9 +214,14 @@ class FungibleToken extends TokenContract {
     proof: SideloadedProof,
     vk: VerificationKey
   ): Promise<AccountUpdate> {
-    await this.verifySideLoadedProof(proof, vk, from);
-
     const accountUpdate = this.internal.burn({ address: from, amount });
+
+    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
+    const burnParams = BurnParams.unpack(packedBurnParams);
+
+    const canBurn = await this.canBurn(accountUpdate, burnParams);
+    canBurn.assertTrue(FungibleTokenErrors.noPermissionToBurn);
+
     const circulationUpdate = AccountUpdate.create(
       this.address,
       this.deriveTokenId()
@@ -222,6 +231,9 @@ class FungibleToken extends TokenContract {
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
     this.emitEvent('Burn', new BurnEvent({ from, amount }));
+
+    await this.verifySideLoadedProof(proof, vk, from);
+
     return accountUpdate;
   }
 
@@ -394,6 +406,31 @@ class FungibleToken extends TokenContract {
     );
 
     return canMint;
+  }
+
+  private async canBurn(accountUpdate: AccountUpdate, burnParams: BurnParams) {
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const burnConfig = BurnConfig.unpack(packedConfigs);
+
+    const { fixedAmount, minAmount, maxAmount } = burnParams;
+
+    await this.ensureAdminSignature(burnConfig.unauthorized.not());
+
+    const magnitude = accountUpdate.body.balanceChange.magnitude;
+
+    const isFixed = magnitude.equals(fixedAmount);
+
+    const lowerBound = magnitude.greaterThanOrEqual(minAmount);
+    const upperBound = magnitude.lessThanOrEqual(maxAmount);
+    const isInRange = lowerBound.and(upperBound);
+
+    const canBurn = Provable.switch(
+      [burnConfig.fixedAmount, burnConfig.rangedAmount],
+      Bool,
+      [isFixed, isInRange]
+    );
+
+    return canBurn;
   }
 
   private async verifySideLoadedProof(
