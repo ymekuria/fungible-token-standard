@@ -10,11 +10,12 @@ import {
 } from 'o1js';
 import { FungibleToken } from '../NewTokenStandard.js';
 import {
-  BurnConfig,
-  BurnParams,
-  DynamicProofConfig,
   MintConfig,
   MintParams,
+  BurnConfig,
+  BurnParams,
+  MintDynamicProofConfig,
+  BurnDynamicProofConfig,
 } from '../configs.js';
 import {
   program,
@@ -78,7 +79,8 @@ const deployTx = await Mina.transaction(
       mintParams,
       BurnConfig.default,
       burnParams,
-      DynamicProofConfig.default
+      MintDynamicProofConfig.default,
+      BurnDynamicProofConfig.default
     );
   }
 );
@@ -150,17 +152,17 @@ console.log(
   updateMintConfigTx.toPretty()
 );
 // ----------------------- UPDATE DYNAMIC PROOF CONFIG ----------------------------
-let dynamicProofConfig = DynamicProofConfig.default;
-dynamicProofConfig.shouldVerify = Bool(true);
+let mintDynamicProofConfig = MintDynamicProofConfig.default;
+mintDynamicProofConfig.shouldVerify = Bool(true);
 
-const updatePackedDynamicProofConfigTx = await Mina.transaction(
+const updateMintDynamicProofConfigTx = await Mina.transaction(
   { sender: alexa, fee },
   async () => {
-    await token.updatePackedDynamicProofConfig(dynamicProofConfig);
+    await token.updateMintDynamicProofConfig(mintDynamicProofConfig);
   }
 );
-await updatePackedDynamicProofConfigTx.prove();
-await updatePackedDynamicProofConfigTx
+await updateMintDynamicProofConfigTx.prove();
+await updateMintDynamicProofConfigTx
   .sign([alexa.key, admin.privateKey])
   .send()
   .wait();
@@ -215,7 +217,7 @@ equal(alexaBalanceAfterMint2, 500n);
 
 // ----------------------- UPDATE DYNAMIC PROOF CONFIG::AUTHORIZED
 //                         ::IGNORE::{requireMinaBalanceMatch, requireCustomTokenBalanceMatch, requireMinaNonceMatch} --------------------------------
-const flexibleDynamicProofConfig = new DynamicProofConfig({
+const flexibleDynamicProofConfig = new MintDynamicProofConfig({
   shouldVerify: Bool(true),
   requireTokenIdMatch: Bool(true),
   requireMinaBalanceMatch: Bool(false),
@@ -231,7 +233,7 @@ const updateDynamicProofConfigTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.updatePackedDynamicProofConfig(flexibleDynamicProofConfig);
+    await token.updateMintDynamicProofConfig(flexibleDynamicProofConfig);
   }
 );
 await updateDynamicProofConfigTx.prove();

@@ -1,6 +1,13 @@
 import { Bool, Field, Struct, UInt64 } from 'o1js';
 
-export { MintConfig, BurnConfig, MintParams, BurnParams, DynamicProofConfig };
+export {
+  MintConfig,
+  BurnConfig,
+  MintParams,
+  BurnParams,
+  MintDynamicProofConfig,
+  BurnDynamicProofConfig,
+};
 
 /**
  * `MintConfig` defines the permission and constraint settings for minting tokens.
@@ -393,7 +400,7 @@ class BurnParams extends Struct({
 }
 
 /**
- * Configuration for dynamic proof verification.
+ * `MintDynamicProofConfig` defines constraints for verifying side-loaded proofs during mint operations.
  *
  * This configuration dictates whether some checks are enforced and various elements captured during proof generation
  * must match the corresponding values at verification time.
@@ -405,7 +412,7 @@ class BurnParams extends Struct({
  * @property requireMinaNonceMatch - Enforces that the MINA account nonce remains consistent between proof generation and verification.
  * @property requireCustomTokenNonceMatch - Enforces that the custom token account nonce remains consistent between proof generation and verification.
  */
-class DynamicProofConfig extends Struct({
+class MintDynamicProofConfig extends Struct({
   shouldVerify: Bool,
   requireTokenIdMatch: Bool,
   requireMinaBalanceMatch: Bool,
@@ -434,21 +441,20 @@ class DynamicProofConfig extends Struct({
   });
 
   /**
-   * Unpacks a Field value into a DynamicProofConfig instance.
+   * Unpacks the `packedDynamicProofConfigs1 and extracts the first 6 bits to construct a `MintDynamicProofConfig` instance.
    *
-   * The packed Field is expected to contain 6 bits corresponding to:
-   * - shouldVerify
-   * - requireTokenIdMatch
-   * - requireMinaBalanceMatch
-   * - requireCustomTokenBalanceMatch
-   * - requireMinaNonceMatch
-   * - requireCustomTokenNonceMatch
+   * Assumes the input field contains both mint and burn dynamic proof configs:
+   * - Bits 0–5: represent the mint config flags (used here).
+   * - Bits 6–11: represent the burn config flags (ignored here).
    *
-   * @param packedDynamicProofConfig - The packed dynamic proof configuration as a Field.
-   * @returns A new DynamicProofConfig instance with the unpacked configuration flags.
+   * @param packedDynamicProofConfigs - A `Field` containing 12 bits (mint + burn proof configs).
+   * @returns A `MintDynamicProofConfig` instance.
    */
-  static unpack(packedDynamicProofConfig: Field) {
-    const serializedDynamicProofConfig = packedDynamicProofConfig.toBits(6);
+  static unpack(packedDynamicProofConfigs: Field) {
+    const serializedMintDynamicProofConfig = packedDynamicProofConfigs
+      .toBits(12)
+      .slice(0, 6);
+
     const [
       shouldVerify,
       requireTokenIdMatch,
@@ -456,7 +462,7 @@ class DynamicProofConfig extends Struct({
       requireCustomTokenBalanceMatch,
       requireMinaNonceMatch,
       requireCustomTokenNonceMatch,
-    ] = serializedDynamicProofConfig;
+    ] = serializedMintDynamicProofConfig;
 
     return new this({
       shouldVerify,
@@ -469,15 +475,11 @@ class DynamicProofConfig extends Struct({
   }
 
   /**
-   * Packs the dynamic proof configuration flags into a single Field value.
+   * Serializes the dynamic proof configuration into an array of 6 `Bool` bits (one per flag).
    *
-   * Each flag is converted into its 1-bit representation, and the resulting bits are concatenated
-   * to form a single Field that represents the entire configuration.
-   *
-   * @param dynamicProofConfig - The dynamic proof configuration to pack.
-   * @returns The packed dynamic proof configuration as a Field.
+   * @returns A flattened array of 6 bits representing the configuration flags.
    */
-  pack() {
+  toBits() {
     const {
       shouldVerify,
       requireTokenIdMatch,
@@ -496,10 +498,181 @@ class DynamicProofConfig extends Struct({
       requireCustomTokenNonceMatch.toField().toBits(1),
     ].flat();
 
-    const packedDynamicProofConfig = Field.fromBits(
-      serializedDynamicProofConfig
-    );
+    return serializedDynamicProofConfig;
+  }
 
-    return packedDynamicProofConfig;
+  /**
+   * Updates the `packedDynamicProofConfigs` containing both mint and burn dynamic proof configs.
+   * Replaces the first 6 bits (mint config) with the current config, while preserving the last 6 bits (burn config).
+   *
+   * @param packedDynamicProofConfigs - A `Field` with both mint and burn dynamic proof configs.
+   * @returns A new packed `Field` with the mint config updated.
+   */
+  updatePackedConfigs(packedDynamicProofConfigs: Field) {
+    const serializedConfigs = packedDynamicProofConfigs.toBits(12);
+    const serializedMintDynamicProofConfig = this.toBits();
+
+    const updatedPackedConfigs = Field.fromBits([
+      ...serializedMintDynamicProofConfig,
+      ...serializedConfigs.slice(6, 12),
+    ]);
+
+    return updatedPackedConfigs;
+  }
+
+  /**
+   * Packs this mint dynamic proof configuration together with a burn dynamic proof configuration
+   * into a single 12-bit `Field`.
+   *
+   * @param burnDynamicProofConfig - A `BurnDynamicProofConfig` instance to combine with this config.
+   * @returns A `Field` containing 12 bits (6 mint + 6 burn).
+   */
+  packConfigs(burnDynamicProofConfig: BurnDynamicProofConfig) {
+    const serializedDynamicProofConfig = this.toBits();
+    const packedDynamicProofConfigs = Field.fromBits([
+      ...serializedDynamicProofConfig,
+      ...burnDynamicProofConfig.toBits(),
+    ]);
+
+    return packedDynamicProofConfigs;
+  }
+}
+
+/**
+ * `BurnDynamicProofConfig` defines constraints for verifying side-loaded proofs during burn operations.
+ *
+ * This configuration dictates whether some checks are enforced and various elements captured during proof generation
+ * must match the corresponding values at verification time.
+ *
+ * @property shouldVerify - When true, a side-loaded proof is verified during the process.
+ * @property requireTokenIdMatch - Enforces that the token ID in the public input must match the token ID in the public output.
+ * @property requireMinaBalanceMatch - Enforces that the MINA balance captured during proof generation matches the balance read at verification.
+ * @property requireCustomTokenBalanceMatch - Enforces that the custom token balance captured during proof generation matches the balance read at verification.
+ * @property requireMinaNonceMatch - Enforces that the MINA account nonce remains consistent between proof generation and verification.
+ * @property requireCustomTokenNonceMatch - Enforces that the custom token account nonce remains consistent between proof generation and verification.
+ */
+class BurnDynamicProofConfig extends Struct({
+  shouldVerify: Bool,
+  requireTokenIdMatch: Bool,
+  requireMinaBalanceMatch: Bool,
+  requireCustomTokenBalanceMatch: Bool,
+  requireMinaNonceMatch: Bool,
+  requireCustomTokenNonceMatch: Bool,
+}) {
+  /**
+   * The default dynamic proof configuration.
+   *
+   * By default:
+   * - Side-loaded proof verification (shouldVerify) is disabled.
+   * - Token ID matching is enforced.
+   * - MINA balance matching is not enforced.
+   * - Custom token balance matching is not enforced.
+   * - MINA nonce matching is not enforced.
+   * - Custom token nonce matching is enforced.
+   */
+  static default = new this({
+    shouldVerify: Bool(false),
+    requireTokenIdMatch: Bool(true),
+    requireMinaBalanceMatch: Bool(true),
+    requireCustomTokenBalanceMatch: Bool(true),
+    requireMinaNonceMatch: Bool(true),
+    requireCustomTokenNonceMatch: Bool(true),
+  });
+
+  /**
+   * Unpacks the `packedDynamicProofConfigs` and extracts the last 6 bits to construct a `BurnDynamicProofConfig` instance.
+   *
+   * Assumes the input field contains both mint and burn dynamic proof configs:
+   * - Bits 0–5: represent the mint config (ignored here).
+   * - Bits 6–11: represent the burn config flags (used here).
+   *
+   * @param packedDynamicProofConfigs - A `Field` containing 12 bits (6 mint + 6 burn).
+   * @returns A `BurnDynamicProofConfig` instance.
+   */
+  static unpack(packedDynamicProofConfigs: Field) {
+    const serializedBurnDynamicProofConfig = packedDynamicProofConfigs
+      .toBits(12)
+      .slice(6, 12);
+
+    const [
+      shouldVerify,
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    ] = serializedBurnDynamicProofConfig;
+
+    return new this({
+      shouldVerify,
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    });
+  }
+
+  /**
+   * Serializes the dynamic proof configuration into an array of 6 `Bool` bits (one per flag).
+   *
+   * @returns A flattened array of 6 bits representing the configuration flags.
+   */
+  toBits() {
+    const {
+      shouldVerify,
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    } = this;
+
+    const serializedDynamicProofConfig = [
+      shouldVerify.toField().toBits(1),
+      requireTokenIdMatch.toField().toBits(1),
+      requireMinaBalanceMatch.toField().toBits(1),
+      requireCustomTokenBalanceMatch.toField().toBits(1),
+      requireMinaNonceMatch.toField().toBits(1),
+      requireCustomTokenNonceMatch.toField().toBits(1),
+    ].flat();
+
+    return serializedDynamicProofConfig;
+  }
+
+  /**
+   * Updates the `packedDynamicProofConfigs` containing both mint and burn dynamic proof configs.
+   * Replaces the last 6 bits (burn config) with the current config, while preserving the first 6 bits (mint config).
+   *
+   * @param packedDynamicProofConfigs - A `Field` with both mint and burn dynamic proof configs.
+   * @returns A new `Field` with the burn config updated.
+   */
+  updatePackedConfigs(packedDynamicProofConfigs: Field) {
+    const serializedConfigs = packedDynamicProofConfigs.toBits(12);
+    const serializedBurnDynamicProofConfig = this.toBits();
+
+    const updatedPackedConfigs = Field.fromBits([
+      ...serializedConfigs.slice(0, 6),
+      ...serializedBurnDynamicProofConfig,
+    ]);
+
+    return updatedPackedConfigs;
+  }
+
+  /**
+   * Packs this burn dynamic proof configuration together with a mint dynamic proof configuration
+   * into a single 12-bit `Field`.
+   *
+   * @param mintDynamicProofConfig - A `MintDynamicProofConfig` instance to combine with this config.
+   * @returns A `Field` containing 12 bits (6 mint + 6 burn).
+   */
+  packConfigs(mintDynamicProofConfig: MintDynamicProofConfig) {
+    const serializedDynamicProofConfig = this.toBits();
+    const packedDynamicProofConfigs = Field.fromBits([
+      ...mintDynamicProofConfig.toBits(),
+      ...serializedDynamicProofConfig,
+    ]);
+
+    return packedDynamicProofConfigs;
   }
 }

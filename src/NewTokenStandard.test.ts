@@ -11,11 +11,12 @@ import {
 } from 'o1js';
 import { FungibleToken } from './NewTokenStandard.js';
 import {
-  BurnConfig,
-  BurnParams,
-  DynamicProofConfig,
   MintConfig,
   MintParams,
+  BurnConfig,
+  BurnParams,
+  MintDynamicProofConfig,
+  BurnDynamicProofConfig,
 } from './configs.js';
 import {
   program,
@@ -37,7 +38,7 @@ describe('New Token Standard Tests', () => {
     mintConfig: MintConfig,
     mintParams: MintParams,
     burnParams: BurnParams,
-    dynamicProofConfig: DynamicProofConfig,
+    mintDynamicProofConfig: MintDynamicProofConfig,
     dummyVkey: VerificationKey,
     dummyProof: SideloadedProof,
     programVkey: VerificationKey,
@@ -77,7 +78,7 @@ describe('New Token Standard Tests', () => {
       maxAmount: UInt64.from(1500),
     });
 
-    dynamicProofConfig = new DynamicProofConfig({
+    mintDynamicProofConfig = new MintDynamicProofConfig({
       shouldVerify: Bool(false),
       requireTokenIdMatch: Bool(true),
       requireMinaBalanceMatch: Bool(true),
@@ -189,7 +190,8 @@ describe('New Token Standard Tests', () => {
               mintParams,
               BurnConfig.default,
               burnParams,
-              dynamicProofConfig
+              mintDynamicProofConfig,
+              BurnDynamicProofConfig.default
             );
           }
         );
@@ -221,7 +223,8 @@ describe('New Token Standard Tests', () => {
               invalidMintParams,
               BurnConfig.default,
               burnParams,
-              dynamicProofConfig
+              mintDynamicProofConfig,
+              BurnDynamicProofConfig.default
             );
           }
         );
@@ -252,8 +255,8 @@ describe('New Token Standard Tests', () => {
               mintParams,
               BurnConfig.default,
               burnParams,
-
-              dynamicProofConfig
+              mintDynamicProofConfig,
+              BurnDynamicProofConfig.default
             );
           }
         );
@@ -277,7 +280,8 @@ describe('New Token Standard Tests', () => {
           mintParams,
           BurnConfig.default,
           burnParams,
-          dynamicProofConfig
+          mintDynamicProofConfig,
+          BurnDynamicProofConfig.default
         );
       });
 
@@ -301,7 +305,8 @@ describe('New Token Standard Tests', () => {
               mintParams,
               BurnConfig.default,
               burnParams,
-              dynamicProofConfig
+              mintDynamicProofConfig,
+              BurnDynamicProofConfig.default
             );
           }
         );
@@ -471,19 +476,19 @@ describe('New Token Standard Tests', () => {
 
       await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);
 
-      let dynamicProofConfig = DynamicProofConfig.default;
-      dynamicProofConfig.shouldVerify = Bool(true);
+      let mintDynamicProofConfig = MintDynamicProofConfig.default;
+      mintDynamicProofConfig.shouldVerify = Bool(true);
 
-      const updatePackedDynamicProofConfigTx = await Mina.transaction(
+      const updateMintDynamicProofConfigTx = await Mina.transaction(
         { sender: user2, fee },
         async () => {
-          await tokenContract.updatePackedDynamicProofConfig(
-            dynamicProofConfig
+          await tokenContract.updateMintDynamicProofConfig(
+            mintDynamicProofConfig
           );
         }
       );
-      await updatePackedDynamicProofConfigTx.prove();
-      await updatePackedDynamicProofConfigTx
+      await updateMintDynamicProofConfigTx.prove();
+      await updateMintDynamicProofConfigTx
         .sign([user2.key, tokenAdmin.key])
         .send()
         .wait();

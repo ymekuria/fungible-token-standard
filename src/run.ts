@@ -3,10 +3,11 @@ import { AccountUpdate, Bool, Mina, PrivateKey, UInt64, UInt8 } from 'o1js';
 import { FungibleToken } from './NewTokenStandard.js';
 import {
   MintConfig,
-  BurnConfig,
   MintParams,
-  DynamicProofConfig,
+  BurnConfig,
   BurnParams,
+  MintDynamicProofConfig,
+  BurnDynamicProofConfig,
 } from './configs.js';
 import {
   generateDummyDynamicProof,
@@ -64,7 +65,8 @@ const deployTx = await Mina.transaction(
       mintParams,
       BurnConfig.default,
       burnParams,
-      DynamicProofConfig.default
+      MintDynamicProofConfig.default,
+      BurnDynamicProofConfig.default
     );
   }
 );

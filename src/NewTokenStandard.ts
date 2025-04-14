@@ -24,7 +24,8 @@ import {
   MintParams,
   BurnConfig,
   BurnParams,
-  DynamicProofConfig,
+  MintDynamicProofConfig,
+  BurnDynamicProofConfig,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -66,7 +67,7 @@ class FungibleToken extends TokenContract {
   @state(Field) packedAmountConfigs = State<Field>();
   @state(Field) packedMintParams = State<Field>();
   @state(Field) packedBurnParams = State<Field>();
-  @state(Field) packedDynamicProofConfig = State<Field>();
+  @state(Field) packedDynamicProofConfigs = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
   @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
 
@@ -111,7 +112,8 @@ class FungibleToken extends TokenContract {
     mintParams: MintParams,
     burnConfig: BurnConfig,
     burnParams: BurnParams,
-    dynamicProofConfig: DynamicProofConfig
+    mintDynamicProofConfig: MintDynamicProofConfig,
+    burnDynamicProofConfig: BurnDynamicProofConfig
   ) {
     this.account.provedState.requireEquals(Bool(false));
 
@@ -127,7 +129,9 @@ class FungibleToken extends TokenContract {
     burnParams.validate();
     this.packedBurnParams.set(burnParams.pack());
 
-    this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
+    this.packedDynamicProofConfigs.set(
+      mintDynamicProofConfig.packConfigs(burnDynamicProofConfig)
+    );
 
     const accountUpdate = AccountUpdate.createSigned(
       this.address,
@@ -202,7 +206,17 @@ class FungibleToken extends TokenContract {
 
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount);
 
-    await this.verifySideLoadedProof(proof, vk, recipient);
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const mintDynamicProofConfig = MintDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+    await this.verifySideLoadedProof(
+      proof,
+      vk,
+      recipient,
+      mintDynamicProofConfig
+    );
 
     return accountUpdate;
   }
@@ -232,7 +246,12 @@ class FungibleToken extends TokenContract {
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
     this.emitEvent('Burn', new BurnEvent({ from, amount }));
 
-    await this.verifySideLoadedProof(proof, vk, from);
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const burnDynamicProofConfig = BurnDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+    await this.verifySideLoadedProof(proof, vk, from, burnDynamicProofConfig);
 
     return accountUpdate;
   }
@@ -363,10 +382,31 @@ class FungibleToken extends TokenContract {
   }
 
   @method
-  async updatePackedDynamicProofConfig(dynamicProofConfig: DynamicProofConfig) {
+  async updateMintDynamicProofConfig(
+    mintDynamicProofConfig: MintDynamicProofConfig
+  ) {
     //! maybe enforce more restriction
     this.ensureAdminSignature(Bool(true));
-    this.packedDynamicProofConfig.set(dynamicProofConfig.pack());
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+
+    this.packedDynamicProofConfigs.set(
+      mintDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    );
+  }
+
+  @method
+  async updateBurnDynamicProofConfig(
+    burnDynamicProofConfig: BurnDynamicProofConfig
+  ) {
+    //! maybe enforce more restriction
+    this.ensureAdminSignature(Bool(true));
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+
+    this.packedDynamicProofConfigs.set(
+      burnDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    );
   }
 
   //! A config can be added to enforce additional conditions when updating the verification key.
@@ -436,13 +476,9 @@ class FungibleToken extends TokenContract {
   private async verifySideLoadedProof(
     proof: SideloadedProof,
     vk: VerificationKey,
-    recipient: PublicKey
+    recipient: PublicKey,
+    dynamicProofConfig: MintDynamicProofConfig | BurnDynamicProofConfig
   ) {
-    const packedDynamicProofConfig =
-      this.packedDynamicProofConfig.getAndRequireEquals();
-    const dynamicProofConfig = DynamicProofConfig.unpack(
-      packedDynamicProofConfig
-    );
     const {
       shouldVerify,
       requireTokenIdMatch,
