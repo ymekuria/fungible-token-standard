@@ -1,6 +1,6 @@
 import { equal } from 'node:assert';
 import { AccountUpdate, Bool, Mina, PrivateKey, UInt64, UInt8 } from 'o1js';
-import { FungibleToken } from './NewTokenStandard.js';
+import { FungibleToken, VKeyMerkleMap } from './NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -28,6 +28,8 @@ const admin = PrivateKey.randomKeypair();
 const token = new FungibleToken(contract.publicKey);
 
 const vKey = (await program.compile()).verificationKey;
+const vKeyMap = new VKeyMerkleMap();
+
 const dummyProof = await generateDummyDynamicProof(
   token.deriveTokenId(),
   alexa
@@ -89,7 +91,7 @@ const mintTx = await Mina.transaction(
   },
   async () => {
     AccountUpdate.fundNewAccount(owner, 2);
-    await token.mint(alexa, new UInt64(300), dummyProof, vKey);
+    await token.mint(alexa, new UInt64(300), dummyProof, vKey, vKeyMap);
   }
 );
 // console.log(mintTx.toPretty().length, mintTx.toPretty());
@@ -138,7 +140,7 @@ const mintTx2 = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.mint(alexa, new UInt64(200), dummyProof, vKey);
+    await token.mint(alexa, new UInt64(200), dummyProof, vKey, vKeyMap);
   }
 );
 await mintTx2.prove();

@@ -9,7 +9,7 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { FungibleToken } from './NewTokenStandard.js';
+import { FungibleToken, VKeyMerkleMap } from './NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -39,6 +39,7 @@ describe('New Token Standard Tests', () => {
     mintParams: MintParams,
     burnParams: BurnParams,
     mintDynamicProofConfig: MintDynamicProofConfig,
+    vKeyMap: VKeyMerkleMap,
     dummyVkey: VerificationKey,
     dummyProof: SideloadedProof,
     programVkey: VerificationKey,
@@ -86,7 +87,7 @@ describe('New Token Standard Tests', () => {
       requireMinaNonceMatch: Bool(true),
       requireCustomTokenNonceMatch: Bool(true),
     });
-
+    vKeyMap = new VKeyMerkleMap();
     dummyVkey = await VerificationKey.dummy();
     dummyProof = await generateDummyDynamicProof(
       tokenContract.deriveTokenId(),
@@ -104,7 +105,13 @@ describe('New Token Standard Tests', () => {
     const userBalanceBefore = await tokenContract.getBalanceOf(user);
     const tx = await Mina.transaction({ sender: user, fee }, async () => {
       AccountUpdate.fundNewAccount(user, 2);
-      await tokenContract.mint(user, mintAmount, dummyProof, dummyVkey);
+      await tokenContract.mint(
+        user,
+        mintAmount,
+        dummyProof,
+        dummyVkey,
+        vKeyMap
+      );
     });
     await tx.prove();
     await tx.sign(signers).send().wait();
@@ -122,7 +129,13 @@ describe('New Token Standard Tests', () => {
     const mintTx = async () => {
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, 2);
-        await tokenContract.mint(user, mintAmount, dummyProof, dummyVkey);
+        await tokenContract.mint(
+          user,
+          mintAmount,
+          dummyProof,
+          dummyVkey,
+          vKeyMap
+        );
       });
       await tx.prove();
       await tx.sign(signers).send().wait();
@@ -443,7 +456,8 @@ describe('New Token Standard Tests', () => {
             user2,
             UInt64.from(600),
             dummyProof,
-            dummyVkey
+            dummyVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -502,7 +516,7 @@ describe('New Token Standard Tests', () => {
       const vKey = (await program.compile()).verificationKey;
       const updateVkeyTx = async () => {
         const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.updateSideLoadedVKeyHash(vKey);
+          await tokenContract.updateSideLoadedVKeyHash(vKey, vKeyMap, Field(1));
         });
         await tx.prove();
         await tx.sign([user1.key]).send().wait();
@@ -516,11 +530,17 @@ describe('New Token Standard Tests', () => {
       const updateVkeyTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.updateSideLoadedVKeyHash(programVkey);
+          await tokenContract.updateSideLoadedVKeyHash(
+            programVkey,
+            vKeyMap,
+            Field(1)
+          );
         }
       );
       await updateVkeyTx.prove();
       await updateVkeyTx.sign([user1.key, tokenAdmin.key]).send().wait();
+
+      vKeyMap.set(Field(1), programVkey.hash);
     });
 
     //! supposed to fail but didn't -> this might be a bug!
@@ -538,7 +558,8 @@ describe('New Token Standard Tests', () => {
             user1,
             mintAmount,
             invalidProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -554,7 +575,8 @@ describe('New Token Standard Tests', () => {
             user1,
             UInt64.from(600),
             dummyProof,
-            dummyVkey
+            dummyVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -576,7 +598,13 @@ describe('New Token Standard Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user2);
 
       const tx = await Mina.transaction({ sender: user2, fee }, async () => {
-        await tokenContract.mint(user2, mintAmount, dynamicProof, programVkey);
+        await tokenContract.mint(
+          user2,
+          mintAmount,
+          dynamicProof,
+          programVkey,
+          vKeyMap
+        );
       });
       await tx.prove();
       await tx.sign([user2.key]).send().wait();
@@ -598,7 +626,8 @@ describe('New Token Standard Tests', () => {
             user1,
             mintAmount,
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -620,7 +649,8 @@ describe('New Token Standard Tests', () => {
             user1,
             mintAmount,
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -657,7 +687,8 @@ describe('New Token Standard Tests', () => {
             user1,
             mintAmount,
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -683,7 +714,8 @@ describe('New Token Standard Tests', () => {
             user2,
             UInt64.from(100),
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         }
       );
@@ -696,7 +728,8 @@ describe('New Token Standard Tests', () => {
             user2,
             mintAmount,
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -736,7 +769,8 @@ describe('New Token Standard Tests', () => {
             user1,
             mintAmount,
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();
@@ -772,7 +806,8 @@ describe('New Token Standard Tests', () => {
             user2,
             mintAmount,
             dynamicProof,
-            programVkey
+            programVkey,
+            vKeyMap
           );
         });
         await tx.prove();

@@ -2,13 +2,14 @@ import { equal } from 'node:assert';
 import {
   AccountUpdate,
   Bool,
+  Field,
   Mina,
   PrivateKey,
   Provable,
   UInt64,
   UInt8,
 } from 'o1js';
-import { FungibleToken } from '../NewTokenStandard.js';
+import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -46,6 +47,8 @@ Provable.log('FTS verification key: ', scVkey.hash);
 // 28601859585317876844971055556684855811670354347630700621724962653324656992162
 const vKey = (await program.compile()).verificationKey;
 Provable.log('Program verification key: ', vKey.hash);
+
+let vKeyMap = new VKeyMerkleMap();
 
 const mintParams = new MintParams({
   fixedAmount: UInt64.from(200),
@@ -111,7 +114,7 @@ const mintTx = await Mina.transaction(
   async () => {
     AccountUpdate.fundNewAccount(owner, 2);
     Provable.log('mina token id: ', AccountUpdate.default(owner).tokenId);
-    await token.mint(alexa, new UInt64(300), dynamicDummyProof, vKey);
+    await token.mint(alexa, new UInt64(300), dynamicDummyProof, vKey, vKeyMap);
   }
 );
 // console.log(mintTx.toPretty().length, mintTx.toPretty());
@@ -174,12 +177,13 @@ const updateVkeyTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.updateSideLoadedVKeyHash(vKey);
+    await token.updateSideLoadedVKeyHash(vKey, vKeyMap, Field(1));
   }
 );
 await updateVkeyTx.prove();
 await updateVkeyTx.sign([alexa.key, admin.privateKey]).send().wait();
 console.log(updateVkeyTx.toPretty().length, updateVkeyTx.toPretty());
+vKeyMap.set(Field(1), vKey.hash);
 
 // ----------------------------- Generate Dynamic Proof -----------------------------------------
 
@@ -198,7 +202,7 @@ const mintTx2 = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.mint(alexa, new UInt64(200), dynamicProof, vKey);
+    await token.mint(alexa, new UInt64(200), dynamicProof, vKey, vKeyMap);
   }
 );
 // console.log(mintTx.toPretty().length, mintTx.toPretty());
@@ -260,7 +264,7 @@ const mintTx3 = await Mina.transaction(
   async () => {
     // the proof is being reused here!
     //! it would have failed if we didn't update the config to a more flexible one
-    await token.mint(alexa, new UInt64(200), dynamicProof, vKey);
+    await token.mint(alexa, new UInt64(200), dynamicProof, vKey, vKeyMap);
   }
 );
 // console.log(mintTx.toPretty().length, mintTx.toPretty());

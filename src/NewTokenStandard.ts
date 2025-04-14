@@ -18,6 +18,7 @@ import {
   UInt64,
   UInt8,
   VerificationKey,
+  Experimental,
 } from 'o1js';
 import {
   MintConfig,
@@ -29,6 +30,11 @@ import {
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
+const { IndexedMerkleMap } = Experimental;
+
+const height = 3;
+class VKeyMerkleMap extends IndexedMerkleMap(height) {}
+
 export {
   FungibleTokenErrors,
   FungibleToken,
@@ -36,6 +42,7 @@ export {
   MintEvent,
   BurnEvent,
   BalanceChangeEvent,
+  VKeyMerkleMap,
 };
 
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
@@ -69,7 +76,7 @@ class FungibleToken extends TokenContract {
   @state(Field) packedBurnParams = State<Field>();
   @state(Field) packedDynamicProofConfigs = State<Field>();
   //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
-  @state(Field) vKey = State<Field>(); // the side-loaded verification key hash.
+  @state(Field) vKeyMapRoot = State<Field>(); // the side-loaded verification key hash.
 
   readonly events = {
     SetAdmin: SetAdminEvent,
@@ -133,6 +140,9 @@ class FungibleToken extends TokenContract {
       mintDynamicProofConfig.packConfigs(burnDynamicProofConfig)
     );
 
+    const emptyVKeyMap = new VKeyMerkleMap();
+    this.vKeyMapRoot.set(emptyVKeyMap.root);
+
     const accountUpdate = AccountUpdate.createSigned(
       this.address,
       this.deriveTokenId()
@@ -157,13 +167,50 @@ class FungibleToken extends TokenContract {
     this.account.verificationKey.set(vk);
   }
 
-  /** Update the hash of the side-loaded verification key.
-   * @note Evaluate whether different methods require separate verification key hashes in future iterations.
+  /**
+   * Updates the side-loaded verification key hash in the Merkle map for a specific token operation.
+   *
+   * This method allows the admin to register or update a verification key used for validating
+   * side-loaded proofs corresponding to a given operation. It verifies that the provided
+   * `operationKey` is valid before updating the Merkle map and account verification key.
+   *
+   * Supported `operationKey` values:
+   * - `1`: Mint
+   * - `2`: Burn
+   * - `3`: Transfer
+   * - `4`: ApproveBase
+   *
+   * @param vKey - The `VerificationKey` to associate with the given operation.
+   * @param operationKey - A `Field` representing the token operation type.
+   * @param vKeyMap - A `VKeyMerkleMap` containing all operation-to-vKey mappings.
+   *
+   * @throws If the `operationKey` is not one of the supported values.
    */
   @method
-  async updateSideLoadedVKeyHash(vKey: VerificationKey) {
+  async updateSideLoadedVKeyHash(
+    vKey: VerificationKey,
+    vKeyMap: VKeyMerkleMap,
+    operationKey: Field
+  ) {
     await this.ensureAdminSignature(Bool(true));
-    this.vKey.set(vKey.hash);
+    const currentRoot = this.vKeyMapRoot.getAndRequireEquals();
+    currentRoot.assertEquals(
+      vKeyMap.root,
+      'Off-chain side-loaded vKey Merkle Map is out of sync!'
+    );
+
+    const isValidOperationKey = operationKey
+      .equals(Field(1))
+      .or(operationKey.equals(Field(2)))
+      .or(operationKey.equals(Field(3)))
+      .or(operationKey.equals(Field(4)));
+
+    isValidOperationKey.assertTrue('Please enter a valid operation key!');
+
+    vKeyMap = vKeyMap.clone();
+    vKeyMap.set(operationKey, vKey.hash);
+
+    this.vKeyMapRoot.set(vKeyMap.root);
   }
 
   @method
@@ -180,7 +227,8 @@ class FungibleToken extends TokenContract {
     recipient: PublicKey,
     amount: UInt64,
     proof: SideloadedProof,
-    vk: VerificationKey // provide the full verification key since only the hash is stored.
+    vk: VerificationKey, // provide the full verification key since only the hash is stored.
+    vKeyMap: VKeyMerkleMap
   ): Promise<AccountUpdate> {
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
@@ -211,11 +259,14 @@ class FungibleToken extends TokenContract {
     const mintDynamicProofConfig = MintDynamicProofConfig.unpack(
       packedDynamicProofConfigs
     );
+
     await this.verifySideLoadedProof(
       proof,
       vk,
       recipient,
-      mintDynamicProofConfig
+      mintDynamicProofConfig,
+      vKeyMap,
+      Field(1)
     );
 
     return accountUpdate;
@@ -226,7 +277,8 @@ class FungibleToken extends TokenContract {
     from: PublicKey,
     amount: UInt64,
     proof: SideloadedProof,
-    vk: VerificationKey
+    vk: VerificationKey,
+    vKeyMap: VKeyMerkleMap
   ): Promise<AccountUpdate> {
     const accountUpdate = this.internal.burn({ address: from, amount });
 
@@ -251,7 +303,15 @@ class FungibleToken extends TokenContract {
     const burnDynamicProofConfig = BurnDynamicProofConfig.unpack(
       packedDynamicProofConfigs
     );
-    await this.verifySideLoadedProof(proof, vk, from, burnDynamicProofConfig);
+
+    await this.verifySideLoadedProof(
+      proof,
+      vk,
+      from,
+      burnDynamicProofConfig,
+      vKeyMap,
+      Field(2)
+    );
 
     return accountUpdate;
   }
@@ -477,7 +537,9 @@ class FungibleToken extends TokenContract {
     proof: SideloadedProof,
     vk: VerificationKey,
     recipient: PublicKey,
-    dynamicProofConfig: MintDynamicProofConfig | BurnDynamicProofConfig
+    dynamicProofConfig: MintDynamicProofConfig | BurnDynamicProofConfig,
+    vKeyMap: VKeyMerkleMap,
+    operationKey: Field
   ) {
     const {
       shouldVerify,
@@ -488,10 +550,32 @@ class FungibleToken extends TokenContract {
       requireCustomTokenNonceMatch,
     } = dynamicProofConfig;
 
+    const vkeyMapRoot = this.vKeyMapRoot.getAndRequireEquals();
+    const isRootCompliant = Provable.if(
+      shouldVerify,
+      vkeyMapRoot.equals(vKeyMap.root),
+      Bool(true)
+    );
+    isRootCompliant.assertTrue(
+      'Off-chain side-loaded vKey Merkle Map is out of sync!'
+    );
+
+    const operationVKeyHashOption = vKeyMap.getOption(operationKey);
+    const vKeyHashIsSome = Provable.if(
+      shouldVerify,
+      operationVKeyHashOption.isSome,
+      Bool(true)
+    );
+    vKeyHashIsSome.assertTrue(
+      'Verification key hash is missing for this operation. Please make sure to register it before verifying a side-loaded proof when `shouldVerify` is enabled in the config.'
+    );
+
     // Ensure the provided side-loaded verification key hash matches the stored on-chain state.
+    //! This is the same as the isSome check but is given a value here to ignore an error when `shouldVerify` is false.
+    const operationVKeyHash = operationVKeyHashOption.orElse(0n);
     const isVKeyValid = Provable.if(
       shouldVerify,
-      vk.hash.equals(this.vKey.getAndRequireEquals()),
+      vk.hash.equals(operationVKeyHash),
       Bool(true)
     );
     isVKeyValid.assertTrue('Invalid side-loaded verification key!');
