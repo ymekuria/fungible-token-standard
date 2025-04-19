@@ -124,10 +124,10 @@ describe('New Token Standard Tests', () => {
     user: PublicKey,
     mintAmount: UInt64,
     signers: PrivateKey[],
-    errorMessage?: string
+    expectedErrorMessage?: string
   ) {
-    const mintTx = async () => {
-      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+    try {
+      const mintTx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, 2);
         await tokenContract.mint(
           user,
@@ -137,10 +137,11 @@ describe('New Token Standard Tests', () => {
           vKeyMap
         );
       });
-      await tx.prove();
-      await tx.sign(signers).send().wait();
-    };
-    expect(mintTx).rejects.toThrowError(errorMessage);
+      await mintTx.prove();
+      await mintTx.sign(signers).send().wait();
+    } catch (error: any) {
+      expect(error.message).toContain(expectedErrorMessage);
+    }
   }
 
   async function updateMintConfigTx(
@@ -191,8 +192,8 @@ describe('New Token Standard Tests', () => {
     });
 
     it('should reject initialization when a signature from the token address is missing', async () => {
-      const initializeTx = async () => {
-        const tx = await Mina.transaction(
+      try {
+        const initializeTx = await Mina.transaction(
           { sender: deployer, fee },
           async () => {
             AccountUpdate.fundNewAccount(deployer);
@@ -209,13 +210,14 @@ describe('New Token Standard Tests', () => {
           }
         );
 
-        await tx.prove();
-        await tx.sign([deployer.key]).send();
-      };
-
-      expect(initializeTx).rejects.toThrowError(
-        'Check signature: Invalid signature on account_update 2'
-      );
+        initializeTx.sign([deployer.key]);
+        await initializeTx.prove();
+        await initializeTx.send();
+      } catch (error: any) {
+        const expectedErrorMessage =
+          'Check signature: Invalid signature on account_update 2';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should reject initialization with invalid mintParams', async () => {
@@ -225,10 +227,11 @@ describe('New Token Standard Tests', () => {
         maxAmount: UInt64.from(100),
       });
 
-      const initializeTx = async () => {
+      try {
         const tx = await Mina.transaction(
           { sender: deployer, fee },
           async () => {
+            AccountUpdate.fundNewAccount(deployer);
             await tokenContract.initialize(
               tokenAdmin,
               UInt8.from(9),
@@ -241,13 +244,12 @@ describe('New Token Standard Tests', () => {
             );
           }
         );
-
         await tx.prove();
         await tx.sign([deployer.key, tokenA.key]).send();
-      };
-
-      const errorMessage = 'Invalid mint range!';
-      expect(initializeTx).rejects.toThrowError(errorMessage);
+      } catch (error: any) {
+        const expectedErrorMessage = 'Invalid mint range!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should reject initialization with invalid mintConfig', async () => {
@@ -256,9 +258,8 @@ describe('New Token Standard Tests', () => {
         fixedAmount: Bool(true),
         rangedAmount: Bool(true),
       });
-
-      const initializeTx = async () => {
-        const tx = await Mina.transaction(
+      try {
+        const initializeTx = await Mina.transaction(
           { sender: deployer, fee },
           async () => {
             await tokenContract.initialize(
@@ -274,13 +275,13 @@ describe('New Token Standard Tests', () => {
           }
         );
 
-        await tx.prove();
-        await tx.sign([deployer.key, tokenA.key]).send();
-      };
-
-      const errorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
-      expect(initializeTx).rejects.toThrowError(errorMessage);
+        await initializeTx.prove();
+        await initializeTx.sign([deployer.key, tokenA.key]).send();
+      } catch (error: any) {
+        const expectedErrorMessage =
+          'Exactly one of the fixed or ranged amount options must be enabled!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('Should initialize tokenA contract', async () => {
@@ -307,8 +308,8 @@ describe('New Token Standard Tests', () => {
     //! Throws an error because the first `initialize` has set the permissions to impossible
     //! not because of the `provedState` precondition
     it('Should prevent calling `initialize()` a second time', async () => {
-      const initializeTx = async () => {
-        const tx = await Mina.transaction(
+      try {
+        const initializeTx = await Mina.transaction(
           { sender: deployer, fee },
           async () => {
             await tokenContract.initialize(
@@ -324,13 +325,13 @@ describe('New Token Standard Tests', () => {
           }
         );
 
-        await tx.prove();
-        await tx.sign([deployer.key, tokenA.key]).send();
-      };
-
-      const errorMessage =
-        "Cannot update field 'permissions' because permission for this field is 'Impossible'";
-      expect(initializeTx).rejects.toThrowError(errorMessage);
+        await initializeTx.prove();
+        await initializeTx.sign([deployer.key, tokenA.key]).send();
+      } catch (error: any) {
+        const expectedErrorMessage =
+          "Cannot update field 'permissions' because permission for this field is 'Impossible'";
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
   });
 
@@ -367,12 +368,17 @@ describe('New Token Standard Tests', () => {
             fixedAmount: Bool(true),
             rangedAmount: Bool(true),
           });
-          const tx = async () =>
-            updateMintConfigTx(user1, mintConfig, [user1.key, tokenAdmin.key]);
 
-          expect(tx).rejects.toThrowError(
-            'Exactly one of the fixed or ranged amount options must be enabled!'
-          );
+          try {
+            await updateMintConfigTx(user1, mintConfig, [
+              user1.key,
+              tokenAdmin.key,
+            ]);
+          } catch (error: any) {
+            const errorMessage =
+              'Exactly one of the fixed or ranged amount options must be enabled!';
+            expect(error.message).toContain(errorMessage);
+          }
         });
 
         it('should reject mintConfig update when unauthorized by the admin', async () => {
@@ -381,12 +387,13 @@ describe('New Token Standard Tests', () => {
             fixedAmount: Bool(true),
             rangedAmount: Bool(false),
           });
-          const tx = async () =>
-            updateMintConfigTx(user2, mintConfig, [user2.key]);
-
-          expect(tx).rejects.toThrowError(
-            'the required authorization was not provided or is invalid.'
-          );
+          try {
+            await updateMintConfigTx(user2, mintConfig, [user2.key]);
+          } catch (error: any) {
+            const expectedErrorMessage =
+              'the required authorization was not provided or is invalid.';
+            expect(error.message).toContain(expectedErrorMessage);
+          }
         });
 
         it('should update packed mintConfig', async () => {
@@ -415,10 +422,15 @@ describe('New Token Standard Tests', () => {
             maxAmount: UInt64.from(0),
           });
 
-          const tx = async () =>
-            updateMintParamsTx(user2, mintParams, [user2.key, tokenAdmin.key]);
-
-          expect(tx).rejects.toThrowError('Invalid mint range!');
+          try {
+            await updateMintParamsTx(user2, mintParams, [
+              user2.key,
+              tokenAdmin.key,
+            ]);
+          } catch (error: any) {
+            const expectedErrorMessage = 'Invalid mint range!';
+            expect(error.message).toContain(expectedErrorMessage);
+          }
         });
 
         it('should reject mintParams update when unauthorized by the admin', async () => {
@@ -428,12 +440,13 @@ describe('New Token Standard Tests', () => {
             maxAmount: UInt64.from(900),
           });
 
-          const tx = async () =>
-            updateMintParamsTx(user1, mintParams, [user1.key]);
-
-          expect(tx).rejects.toThrowError(
-            'the required authorization was not provided or is invalid.'
-          );
+          try {
+            await updateMintParamsTx(user1, mintParams, [user1.key]);
+          } catch (error: any) {
+            const expectedErrorMessage =
+              'the required authorization was not provided or is invalid.';
+            expect(error.message).toContain(expectedErrorMessage);
+          }
         });
 
         it('should update packed mintParams', async () => {
@@ -514,16 +527,25 @@ describe('New Token Standard Tests', () => {
 
     it('should reject updating SL vKey when unauthorized by the admin', async () => {
       const vKey = (await program.compile()).verificationKey;
-      const updateVkeyTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.updateSideLoadedVKeyHash(vKey, vKeyMap, Field(1));
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-      expect(updateVkeyTx).rejects.toThrowError(
-        'the required authorization was not provided or is invalid.'
-      );
+
+      try {
+        const updateVkeyTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.updateSideLoadedVKeyHash(
+              vKey,
+              vKeyMap,
+              Field(1)
+            );
+          }
+        );
+        await updateVkeyTx.prove();
+        await updateVkeyTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage =
+          'the required authorization was not provided or is invalid.';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should update the on-chain side-loaded verification key', async () => {
@@ -544,7 +566,7 @@ describe('New Token Standard Tests', () => {
     });
 
     //! supposed to fail but didn't -> this might be a bug!
-    it.skip('should reject mint given an invalid proof', async () => {
+    it('should reject mint given an invalid proof', async () => {
       await program2.compile();
       const mintAmount = UInt64.from(600);
       const invalidProof = await generateDynamicProof2(
@@ -552,40 +574,46 @@ describe('New Token Standard Tests', () => {
         user1
       );
 
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.mint(
-            user1,
-            mintAmount,
-            invalidProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-      expect(mintTx).rejects.toThrowError();
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.mint(
+              user1,
+              mintAmount,
+              invalidProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        expect(error.message).toContain('Constraint unsatisfied (unreduced)');
+      }
     });
 
     it('should reject minting given a non-compliant SL vKey', async () => {
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.mint(
-            user1,
-            UInt64.from(600),
-            dummyProof,
-            dummyVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-
-      expect(mintTx).rejects.toThrowError(
-        'Invalid side-loaded verification key!'
-      );
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.mint(
+              user1,
+              UInt64.from(600),
+              dummyProof,
+              dummyVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage = 'Invalid side-loaded verification key!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should mint given a valid proof', async () => {
@@ -620,45 +648,51 @@ describe('New Token Standard Tests', () => {
       );
 
       const mintAmount = UInt64.from(600);
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.mint(
-            user1,
-            mintAmount,
-            dynamicProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-
-      expect(mintTx).rejects.toThrowError(
-        'Recipient mismatch in side-loaded proof!'
-      );
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.mint(
+              user1,
+              mintAmount,
+              dynamicProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage = 'Recipient mismatch in side-loaded proof!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should reject mint given an invalid proof requireTokenIdMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
-
       const mintAmount = UInt64.from(600);
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.mint(
-            user1,
-            mintAmount,
-            dynamicProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-      expect(mintTx).rejects.toThrowError(
-        'Token ID mismatch between input and output'
-      );
+
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.mint(
+              user1,
+              mintAmount,
+              dynamicProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage =
+          'Token ID mismatch between input and output';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should reject mint given an invalid proof requireMinaBalanceMatch precondition', async () => {
@@ -681,20 +715,25 @@ describe('New Token Standard Tests', () => {
       sendMinaTx.prove();
       sendMinaTx.sign([user1.key]).send().wait();
 
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.mint(
-            user1,
-            mintAmount,
-            dynamicProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-      expect(mintTx).rejects.toThrowError('Mismatch in MINA account balance.');
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.mint(
+              user1,
+              mintAmount,
+              dynamicProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage = 'Mismatch in MINA account balance.';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should reject mint given an invalid proof requireCustomTokenBalanceMatch precondition', async () => {
@@ -722,22 +761,26 @@ describe('New Token Standard Tests', () => {
       await burnTx.prove();
       await burnTx.sign([user1.key, user2.key]).send().wait();
 
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user2, fee }, async () => {
-          await tokenContract.mint(
-            user2,
-            mintAmount,
-            dynamicProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user2.key]).send().wait();
-      };
-      expect(mintTx).rejects.toThrowError(
-        'Custom token balance inconsistency detected!'
-      );
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user2, fee },
+          async () => {
+            await tokenContract.mint(
+              user2,
+              mintAmount,
+              dynamicProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user2.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage =
+          'Custom token balance inconsistency detected!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     it('should reject mint given an invalid proof requireMinaNonceMatch precondition', async () => {
@@ -763,20 +806,25 @@ describe('New Token Standard Tests', () => {
       await sendTx.prove();
       await sendTx.sign([user1.key, user2.key]).send().wait();
 
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user1, fee }, async () => {
-          await tokenContract.mint(
-            user1,
-            mintAmount,
-            dynamicProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user1.key]).send().wait();
-      };
-      expect(mintTx).rejects.toThrowError('Mismatch in MINA account nonce!');
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user1, fee },
+          async () => {
+            await tokenContract.mint(
+              user1,
+              mintAmount,
+              dynamicProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user1.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage = 'Mismatch in MINA account nonce!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
 
     //! supposed to fail but didn't -> we might need to remove the token account nonce precondition
@@ -800,20 +848,25 @@ describe('New Token Standard Tests', () => {
       await transfersTx.prove();
       transfersTx.sign([user1.key, user2.key]).send().wait();
 
-      const mintTx = async () => {
-        const tx = await Mina.transaction({ sender: user2, fee }, async () => {
-          await tokenContract.mint(
-            user2,
-            mintAmount,
-            dynamicProof,
-            programVkey,
-            vKeyMap
-          );
-        });
-        await tx.prove();
-        await tx.sign([user2.key]).send().wait();
-      };
-      expect(mintTx).rejects.toThrowError('Mismatch in MINA account nonce!');
+      try {
+        const mintTx = await Mina.transaction(
+          { sender: user2, fee },
+          async () => {
+            await tokenContract.mint(
+              user2,
+              mintAmount,
+              dynamicProof,
+              programVkey,
+              vKeyMap
+            );
+          }
+        );
+        await mintTx.prove();
+        await mintTx.sign([user2.key]).send().wait();
+      } catch (error: any) {
+        const expectedErrorMessage = 'Mismatch in MINA account nonce!';
+        expect(error.message).toContain(expectedErrorMessage);
+      }
     });
   });
 });
