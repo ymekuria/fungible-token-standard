@@ -8,6 +8,7 @@ import {
   BurnParams,
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
+  TransferDynamicProofConfig,
 } from './configs.js';
 import {
   generateDummyDynamicProof,
@@ -68,7 +69,8 @@ const deployTx = await Mina.transaction(
       BurnConfig.default,
       burnParams,
       MintDynamicProofConfig.default,
-      BurnDynamicProofConfig.default
+      BurnDynamicProofConfig.default,
+      TransferDynamicProofConfig.default
     );
   }
 );

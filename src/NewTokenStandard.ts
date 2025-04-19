@@ -27,6 +27,7 @@ import {
   BurnParams,
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
+  TransferDynamicProofConfig,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -75,7 +76,6 @@ class FungibleToken extends TokenContract {
   @state(Field) packedMintParams = State<Field>();
   @state(Field) packedBurnParams = State<Field>();
   @state(Field) packedDynamicProofConfigs = State<Field>();
-  //TODO Consider adding integrating a URI-like mechanism for enhanced referencing.
   @state(Field) vKeyMapRoot = State<Field>(); // the side-loaded verification key hash.
 
   readonly events = {
@@ -120,7 +120,8 @@ class FungibleToken extends TokenContract {
     burnConfig: BurnConfig,
     burnParams: BurnParams,
     mintDynamicProofConfig: MintDynamicProofConfig,
-    burnDynamicProofConfig: BurnDynamicProofConfig
+    burnDynamicProofConfig: BurnDynamicProofConfig,
+    transferDynamicProofConfig: TransferDynamicProofConfig
   ) {
     this.account.provedState.requireEquals(Bool(false));
 
@@ -137,7 +138,10 @@ class FungibleToken extends TokenContract {
     this.packedBurnParams.set(burnParams.pack());
 
     this.packedDynamicProofConfigs.set(
-      mintDynamicProofConfig.packConfigs(burnDynamicProofConfig)
+      mintDynamicProofConfig.packConfigs(
+        burnDynamicProofConfig,
+        transferDynamicProofConfig
+      )
     );
 
     const emptyVKeyMap = new VKeyMerkleMap();
@@ -316,8 +320,19 @@ class FungibleToken extends TokenContract {
     return accountUpdate;
   }
 
+  override async transfer(from: PublicKey, to: PublicKey, amount: UInt64) {
+    throw Error('Use transferCustom() method instead.');
+  }
+
   @method
-  async transfer(from: PublicKey, to: PublicKey, amount: UInt64) {
+  async transferCustom(
+    from: PublicKey,
+    to: PublicKey,
+    amount: UInt64,
+    proof: SideloadedProof,
+    vk: VerificationKey,
+    vKeyMap: VKeyMerkleMap
+  ) {
     from
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
@@ -325,6 +340,21 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noTransferFromCirculation
     );
     this.internal.send({ from, to, amount });
+
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const transferDynamicProofConfig = TransferDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+
+    await this.verifySideLoadedProof(
+      proof,
+      vk,
+      from,
+      transferDynamicProofConfig,
+      vKeyMap,
+      Field(3)
+    );
   }
 
   private checkPermissionsUpdate(update: AccountUpdate) {
@@ -466,6 +496,20 @@ class FungibleToken extends TokenContract {
 
     this.packedDynamicProofConfigs.set(
       burnDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    );
+  }
+
+  @method
+  async updateTransferDynamicProofConfig(
+    transferDynamicProofConfig: TransferDynamicProofConfig
+  ) {
+    //! maybe enforce more restriction
+    this.ensureAdminSignature(Bool(true));
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+
+    this.packedDynamicProofConfigs.set(
+      transferDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
     );
   }
 

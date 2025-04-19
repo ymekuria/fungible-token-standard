@@ -17,6 +17,7 @@ import {
   BurnParams,
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
+  TransferDynamicProofConfig,
 } from './configs.js';
 import {
   program,
@@ -205,7 +206,8 @@ describe('New Token Standard Tests', () => {
               BurnConfig.default,
               burnParams,
               mintDynamicProofConfig,
-              BurnDynamicProofConfig.default
+              BurnDynamicProofConfig.default,
+              TransferDynamicProofConfig.default
             );
           }
         );
@@ -240,7 +242,8 @@ describe('New Token Standard Tests', () => {
               BurnConfig.default,
               burnParams,
               mintDynamicProofConfig,
-              BurnDynamicProofConfig.default
+              BurnDynamicProofConfig.default,
+              TransferDynamicProofConfig.default
             );
           }
         );
@@ -262,6 +265,7 @@ describe('New Token Standard Tests', () => {
         const initializeTx = await Mina.transaction(
           { sender: deployer, fee },
           async () => {
+            AccountUpdate.fundNewAccount(deployer);
             await tokenContract.initialize(
               tokenAdmin,
               UInt8.from(9),
@@ -270,7 +274,8 @@ describe('New Token Standard Tests', () => {
               BurnConfig.default,
               burnParams,
               mintDynamicProofConfig,
-              BurnDynamicProofConfig.default
+              BurnDynamicProofConfig.default,
+              TransferDynamicProofConfig.default
             );
           }
         );
@@ -295,7 +300,8 @@ describe('New Token Standard Tests', () => {
           BurnConfig.default,
           burnParams,
           mintDynamicProofConfig,
-          BurnDynamicProofConfig.default
+          BurnDynamicProofConfig.default,
+          TransferDynamicProofConfig.default
         );
       });
 
@@ -320,7 +326,8 @@ describe('New Token Standard Tests', () => {
               BurnConfig.default,
               burnParams,
               mintDynamicProofConfig,
-              BurnDynamicProofConfig.default
+              BurnDynamicProofConfig.default,
+              TransferDynamicProofConfig.default
             );
           }
         );
@@ -840,8 +847,22 @@ describe('New Token Standard Tests', () => {
       const transfersTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.transfer(user1, user2, UInt64.from(100));
-          await tokenContract.transfer(user2, user1, UInt64.from(100));
+          await tokenContract.transferCustom(
+            user1,
+            user2,
+            UInt64.from(100),
+            dummyProof,
+            dummyVkey,
+            vKeyMap
+          );
+          await tokenContract.transferCustom(
+            user2,
+            user1,
+            UInt64.from(100),
+            dummyProof,
+            dummyVkey,
+            vKeyMap
+          );
         }
       );
 
