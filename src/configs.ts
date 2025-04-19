@@ -8,6 +8,7 @@ export {
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
+  UpdatesDynamicProofConfig,
 };
 
 /**
@@ -427,9 +428,9 @@ class MintDynamicProofConfig extends Struct({
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
    * - Token ID matching is enforced.
-   * - MINA balance matching is not enforced.
-   * - Custom token balance matching is not enforced.
-   * - MINA nonce matching is not enforced.
+   * - MINA balance matching is enforced.
+   * - Custom token balance matching is enforced.
+   * - MINA nonce matching is enforced.
    * - Custom token nonce matching is enforced.
    */
   static default = new this({
@@ -444,17 +445,18 @@ class MintDynamicProofConfig extends Struct({
   /**
    * Unpacks the `packedDynamicProofConfigs1 and extracts the first 6 bits to construct a `MintDynamicProofConfig` instance.
    *
-   * Assumes the input field contains both mint and burn dynamic proof configs:
+   * Assumes the input field contains all required proof configs:
    * - Bits 0–5: represent the mint config flags (used here).
    * - Bits 6–11: represent the burn config flags (ignored here).
    * - Bits 12–17: represent the transfer config flags (ignored here).
+   * - Bits 18–23: represent the updates config flags (ignored here).
    *
-   * @param packedDynamicProofConfigs - A `Field` containing 18 bits (mint + burn + transfer proof configs).
+   * @param packedDynamicProofConfigs - A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
    * @returns A `MintDynamicProofConfig` instance.
    */
   static unpack(packedDynamicProofConfigs: Field) {
     const serializedMintDynamicProofConfig = packedDynamicProofConfigs
-      .toBits(18)
+      .toBits(24)
       .slice(0, 6);
 
     const [
@@ -505,18 +507,17 @@ class MintDynamicProofConfig extends Struct({
 
   /**
    * Updates the `packedDynamicProofConfigs` containing all the dynamic proof configs.
-   * Replaces the first 6 bits (mint config) with the current config, while preserving the other 12 bits (burn and transfer configs).
+   * Replaces the first 6 bits (mint config) with the current config, while preserving the other configs' bits.
    *
-   * @param packedDynamicProofConfigs - A `Field` with all the dynamic proof configs.
+   * @param packedDynamicProofConfigs - A `Field` encoding all the packed dynamic proof configs.
    * @returns A new packed `Field` with the mint config updated.
    */
   updatePackedConfigs(packedDynamicProofConfigs: Field) {
-    const serializedConfigs = packedDynamicProofConfigs.toBits(18);
-    const serializedMintDynamicProofConfig = this.toBits();
+    const serializedConfigs = packedDynamicProofConfigs.toBits(24);
 
     const updatedPackedConfigs = Field.fromBits([
-      ...serializedMintDynamicProofConfig,
-      ...serializedConfigs.slice(6, 18),
+      ...this.toBits(),
+      ...serializedConfigs.slice(6, 24),
     ]);
 
     return updatedPackedConfigs;
@@ -524,21 +525,23 @@ class MintDynamicProofConfig extends Struct({
 
   /**
    * Packs this mint dynamic proof configuration together with the other dynamic proof configurations
-   * into a single 18-bit `Field`.
+   * into a single 24-bit `Field`.
    *
    * @param burnDynamicProofConfig - A `BurnDynamicProofConfig` instance to combine with this config.
    * @param transferDynamicProofConfig - A `TransferDynamicProofConfig` instance to combine with this config.
-   * @returns A `Field` containing 18 bits (6 mint + 6 burn + 6 transfer).
+   * @param updatesDynamicProofConfig - A `UpdatesDynamicProofConfig` instance to combine with this config.
+   * @returns A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
    */
   packConfigs(
     burnDynamicProofConfig: BurnDynamicProofConfig,
-    transferDynamicProofConfig: TransferDynamicProofConfig
+    transferDynamicProofConfig: TransferDynamicProofConfig,
+    updatesDynamicProofConfig: UpdatesDynamicProofConfig
   ) {
-    const serializedDynamicProofConfig = this.toBits();
     const packedDynamicProofConfigs = Field.fromBits([
-      ...serializedDynamicProofConfig,
+      ...this.toBits(),
       ...burnDynamicProofConfig.toBits(),
       ...transferDynamicProofConfig.toBits(),
+      ...updatesDynamicProofConfig.toBits(),
     ]);
 
     return packedDynamicProofConfigs;
@@ -572,9 +575,9 @@ class BurnDynamicProofConfig extends Struct({
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
    * - Token ID matching is enforced.
-   * - MINA balance matching is not enforced.
-   * - Custom token balance matching is not enforced.
-   * - MINA nonce matching is not enforced.
+   * - MINA balance matching is enforced.
+   * - Custom token balance matching is enforced.
+   * - MINA nonce matching is enforced.
    * - Custom token nonce matching is enforced.
    */
   static default = new this({
@@ -587,14 +590,15 @@ class BurnDynamicProofConfig extends Struct({
   });
 
   /**
-   * Unpacks the `packedDynamicProofConfigs` and extracts the middle 6 bits to construct a `BurnDynamicProofConfig` instance.
+   * Unpacks the `packedDynamicProofConfigs` and extracts the 6 bits portion to construct a `BurnDynamicProofConfig` instance.
    *
    * Assumes the input field contains both mint and burn dynamic proof configs:
    * - Bits 0–5: represent the mint config (ignored here).
    * - Bits 6–11: represent the burn config flags (used here).
    * - Bits 12–17: represent the transfer config flags (ignored here).
+   * - Bits 18–23: represent the updates config flags (ignored here).
    *
-   * @param packedDynamicProofConfigs - A `Field` containing 18 bits (6 mint + 6 burn + 6 transfer).
+   * @param packedDynamicProofConfigs - A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
    * @returns A `BurnDynamicProofConfig` instance.
    */
   static unpack(packedDynamicProofConfigs: Field) {
@@ -650,19 +654,18 @@ class BurnDynamicProofConfig extends Struct({
 
   /**
    * Updates the `packedDynamicProofConfigs` containing all the dynamic proof configs.
-   * Replaces the middle 6 bits (burn config) with the current config, while preserving the first and last 6 bits (mint and transfer configs).
+   * Replaces the 6 bits of packed burn config with the current config, while preserving the other configs' bits.
    *
-   * @param packedDynamicProofConfigs - A `Field` with both mint and burn dynamic proof configs.
+   * @param packedDynamicProofConfigs - A `Field` encoding all the packed dynamic proof configs.
    * @returns A new `Field` with the burn config updated.
    */
   updatePackedConfigs(packedDynamicProofConfigs: Field) {
     const serializedConfigs = packedDynamicProofConfigs.toBits(18);
-    const serializedBurnDynamicProofConfig = this.toBits();
 
     const updatedPackedConfigs = Field.fromBits([
       ...serializedConfigs.slice(0, 6),
-      ...serializedBurnDynamicProofConfig,
-      ...serializedConfigs.slice(12, 18),
+      ...this.toBits(),
+      ...serializedConfigs.slice(12, 24),
     ]);
 
     return updatedPackedConfigs;
@@ -670,21 +673,23 @@ class BurnDynamicProofConfig extends Struct({
 
   /**
    * Packs this burn dynamic proof configuration together with the other dynamic proof configurations
-   * into a single 18-bit `Field`.
+   * into a single 24-bit `Field`.
    *
    * @param mintDynamicProofConfig - A `MintDynamicProofConfig` instance to combine with this config.
    * @param transferDynamicProofConfig - A `TransferDynamicProofConfig` instance to combine with this config.
-   * @returns A `Field` containing 18 bits (6 mint + 6 burn + 6 transfer).
+   * @param updatesDynamicProofConfig - An `UpdatesDynamicProofConfig` instance to combine with this config.
+   * @returns A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + updates).
    */
   packConfigs(
     mintDynamicProofConfig: MintDynamicProofConfig,
-    transferDynamicProofConfig: TransferDynamicProofConfig
+    transferDynamicProofConfig: TransferDynamicProofConfig,
+    updatesDynamicProofConfig: UpdatesDynamicProofConfig
   ) {
-    const serializedDynamicProofConfig = this.toBits();
     const packedDynamicProofConfigs = Field.fromBits([
       ...mintDynamicProofConfig.toBits(),
-      ...serializedDynamicProofConfig,
+      ...this.toBits(),
       ...transferDynamicProofConfig.toBits(),
+      ...updatesDynamicProofConfig.toBits(),
     ]);
 
     return packedDynamicProofConfigs;
@@ -718,9 +723,9 @@ class TransferDynamicProofConfig extends Struct({
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
    * - Token ID matching is enforced.
-   * - MINA balance matching is not enforced.
-   * - Custom token balance matching is not enforced.
-   * - MINA nonce matching is not enforced.
+   * - MINA balance matching is enforced.
+   * - Custom token balance matching is enforced.
+   * - MINA nonce matching is enforced.
    * - Custom token nonce matching is enforced.
    */
   static default = new this({
@@ -733,19 +738,20 @@ class TransferDynamicProofConfig extends Struct({
   });
 
   /**
-   * Unpacks the `packedDynamicProofConfigs` and extracts the last 6 bits to construct a `BurnDynamicProofConfig` instance.
+   * Unpacks the `packedDynamicProofConfigs` and extracts the 6 bits portion to construct a `TransferDynamicProofConfig` instance.
    *
    * Assumes the input field contains both mint and burn dynamic proof configs:
    * - Bits 0–5: represent the mint config (ignored here).
    * - Bits 6–11: represent the burn config flags (ignored here).
    * - Bits 12–17: represent the transfer config flags (used here).
+   * - Bits 18–23: represent the updates config flags (ignored here).
    *
-   * @param packedDynamicProofConfigs - A `Field` containing 18 bits (6 mint + 6 burn + 6 transfer).
+   * @param packedDynamicProofConfigs - A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
    * @returns A `TransferDynamicProofConfig` instance.
    */
   static unpack(packedDynamicProofConfigs: Field) {
     const serializedBurnDynamicProofConfig = packedDynamicProofConfigs
-      .toBits(18)
+      .toBits(24)
       .slice(12, 18);
 
     const [
@@ -796,41 +802,190 @@ class TransferDynamicProofConfig extends Struct({
 
   /**
    * Updates the `packedDynamicProofConfigs` containing all dynamic proof configs.
-   * Replaces the last 6 bits (transfer config) with the current config, while preserving the other configs' bits (mint and burs configs).
+   * Replaces the 6 bits of packed transfer config with the current config, while preserving the other configs' bits.
    *
-   * @param packedDynamicProofConfigs - A `Field` with both mint and burn dynamic proof configs.
-   * @returns A new `Field` with the burn config updated.
+   * @param packedDynamicProofConfigs - A `Field` encoding all the packed dynamic proof configs.
+   * @returns A new `Field` with the transfer config updated.
    */
   updatePackedConfigs(packedDynamicProofConfigs: Field) {
-    const serializedConfigs = packedDynamicProofConfigs.toBits(18);
-    const serializedTransferDynamicProofConfig = this.toBits();
+    const serializedConfigs = packedDynamicProofConfigs.toBits(24);
 
     const updatedPackedConfigs = Field.fromBits([
       ...serializedConfigs.slice(0, 6),
       ...serializedConfigs.slice(6, 12),
-      ...serializedTransferDynamicProofConfig,
+      ...this.toBits(),
+      ...serializedConfigs.slice(18, 24),
     ]);
 
     return updatedPackedConfigs;
   }
 
   /**
-   * Packs this burn dynamic proof configuration together with the other dynamic proof configurations
-   * into a single 18-bit `Field`.
+   * Packs this transfer dynamic proof configuration together with the other dynamic proof configurations
+   * into a single 24-bit `Field`.
    *
    * @param mintDynamicProofConfig - A `MintDynamicProofConfig` instance to combine with this config.
    * @param burnDynamicProofConfig - A `BurnDynamicProofConfig` instance to combine with this config.
-   * @returns A `Field` containing 18 bits (6 mint + 6 burn + 6 transfer).
+   * @param updatesDynamicProofConfig - An `UpdatesDynamicProofConfig` instance to combine with this config.
+   * @returns A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
    */
   packConfigs(
     mintDynamicProofConfig: MintDynamicProofConfig,
-    burnDynamicProofConfig: BurnDynamicProofConfig
+    burnDynamicProofConfig: BurnDynamicProofConfig,
+    updatesDynamicProofConfig: UpdatesDynamicProofConfig
   ) {
-    const serializedDynamicProofConfig = this.toBits();
     const packedDynamicProofConfigs = Field.fromBits([
       ...mintDynamicProofConfig.toBits(),
       ...burnDynamicProofConfig.toBits(),
-      ...serializedDynamicProofConfig,
+      ...this.toBits(),
+      ...updatesDynamicProofConfig.toBits(),
+    ]);
+
+    return packedDynamicProofConfigs;
+  }
+}
+
+/**
+ * `UpdatesDynamicProofConfig` defines constraints for verifying side-loaded proofs during burn operations.
+ *
+ * This configuration dictates whether some checks are enforced and various elements captured during proof generation
+ * must match the corresponding values at verification time.
+ *
+ * @property shouldVerify - When true, a side-loaded proof is verified during the process.
+ * @property requireTokenIdMatch - Enforces that the token ID in the public input must match the token ID in the public output.
+ * @property requireMinaBalanceMatch - Enforces that the MINA balance captured during proof generation matches the balance read at verification.
+ * @property requireCustomTokenBalanceMatch - Enforces that the custom token balance captured during proof generation matches the balance read at verification.
+ * @property requireMinaNonceMatch - Enforces that the MINA account nonce remains consistent between proof generation and verification.
+ * @property requireCustomTokenNonceMatch - Enforces that the custom token account nonce remains consistent between proof generation and verification.
+ */
+class UpdatesDynamicProofConfig extends Struct({
+  shouldVerify: Bool,
+  requireTokenIdMatch: Bool,
+  requireMinaBalanceMatch: Bool,
+  requireCustomTokenBalanceMatch: Bool,
+  requireMinaNonceMatch: Bool,
+  requireCustomTokenNonceMatch: Bool,
+}) {
+  /**
+   * The default dynamic proof configuration.
+   *
+   * By default:
+   * - Side-loaded proof verification (shouldVerify) is disabled.
+   * - Token ID matching is not enforced.
+   * - MINA balance matching is not enforced.
+   * - Custom token balance matching is not enforced.
+   * - MINA nonce matching is not enforced.
+   * - Custom token nonce matching is not enforced.
+   */
+  static default = new this({
+    shouldVerify: Bool(false),
+    requireTokenIdMatch: Bool(false),
+    requireMinaBalanceMatch: Bool(false),
+    requireCustomTokenBalanceMatch: Bool(false),
+    requireMinaNonceMatch: Bool(false),
+    requireCustomTokenNonceMatch: Bool(false),
+  });
+
+  /**
+   * Unpacks the `packedDynamicProofConfigs` and extracts the last 6 bits to construct an `UpdatesDynamicProofConfig` instance.
+   *
+   * Assumes the input field contains all required dynamic proof configs:
+   * - Bits 0–5: represent the mint config (ignored here).
+   * - Bits 6–11: represent the burn config flags (ignored here).
+   * - Bits 12–17: represent the transfer config flags (ignored here).
+   * - Bits 18–23: represent the updates config flags (used here).
+   *
+   * @param packedDynamicProofConfigs - A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
+   * @returns A `TransferDynamicProofConfig` instance.
+   */
+  static unpack(packedDynamicProofConfigs: Field) {
+    const serializedBurnDynamicProofConfig = packedDynamicProofConfigs
+      .toBits(24)
+      .slice(18, 24);
+
+    const [
+      shouldVerify,
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    ] = serializedBurnDynamicProofConfig;
+
+    return new this({
+      shouldVerify,
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    });
+  }
+
+  /**
+   * Serializes the dynamic proof configuration into an array of 6 `Bool` bits (one per flag).
+   *
+   * @returns A flattened array of 6 bits representing the configuration flags.
+   */
+  toBits() {
+    const {
+      shouldVerify,
+      requireTokenIdMatch,
+      requireMinaBalanceMatch,
+      requireCustomTokenBalanceMatch,
+      requireMinaNonceMatch,
+      requireCustomTokenNonceMatch,
+    } = this;
+
+    const serializedDynamicProofConfig = [
+      shouldVerify.toField().toBits(1),
+      requireTokenIdMatch.toField().toBits(1),
+      requireMinaBalanceMatch.toField().toBits(1),
+      requireCustomTokenBalanceMatch.toField().toBits(1),
+      requireMinaNonceMatch.toField().toBits(1),
+      requireCustomTokenNonceMatch.toField().toBits(1),
+    ].flat();
+
+    return serializedDynamicProofConfig;
+  }
+
+  /**
+   * Updates the `packedDynamicProofConfigs` containing all dynamic proof configs.
+   * Replaces the last 6 bits (updates config) with the current config, while preserving the other configs' bits.
+   *
+   * @param packedDynamicProofConfigs - A `Field` encoding all the packed dynamic proof configs.
+   * @returns A new `Field` with the updates config updated.
+   */
+  updatePackedConfigs(packedDynamicProofConfigs: Field) {
+    const serializedConfigs = packedDynamicProofConfigs.toBits(24);
+
+    const updatedPackedConfigs = Field.fromBits([
+      ...serializedConfigs.slice(0, 18),
+      ...this.toBits(),
+    ]);
+
+    return updatedPackedConfigs;
+  }
+
+  /**
+   * Packs this updates dynamic proof configuration together with the other dynamic proof configurations
+   * into a single 24-bit `Field`.
+   *
+   * @param mintDynamicProofConfig - A `MintDynamicProofConfig` instance to combine with this config.
+   * @param burnDynamicProofConfig - A `BurnDynamicProofConfig` instance to combine with this config.
+   * @param transferDynamicProofConfig - A `TransferDynamicProofConfig` instance to combine with this config.
+   * @returns A `Field` containing 24 bits (6 mint + 6 burn + 6 transfer + 6 updates).
+   */
+  packConfigs(
+    mintDynamicProofConfig: MintDynamicProofConfig,
+    burnDynamicProofConfig: BurnDynamicProofConfig,
+    transferDynamicProofConfig: TransferDynamicProofConfig
+  ) {
+    const packedDynamicProofConfigs = Field.fromBits([
+      ...mintDynamicProofConfig.toBits(),
+      ...burnDynamicProofConfig.toBits(),
+      ...transferDynamicProofConfig.toBits(),
+      ...this.toBits(),
     ]);
 
     return packedDynamicProofConfigs;

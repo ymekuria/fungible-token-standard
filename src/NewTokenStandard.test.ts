@@ -18,6 +18,7 @@ import {
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
+  UpdatesDynamicProofConfig,
 } from './configs.js';
 import {
   program,
@@ -207,7 +208,8 @@ describe('New Token Standard Tests', () => {
               burnParams,
               mintDynamicProofConfig,
               BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default
+              TransferDynamicProofConfig.default,
+              UpdatesDynamicProofConfig.default
             );
           }
         );
@@ -243,7 +245,8 @@ describe('New Token Standard Tests', () => {
               burnParams,
               mintDynamicProofConfig,
               BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default
+              TransferDynamicProofConfig.default,
+              UpdatesDynamicProofConfig.default
             );
           }
         );
@@ -275,7 +278,8 @@ describe('New Token Standard Tests', () => {
               burnParams,
               mintDynamicProofConfig,
               BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default
+              TransferDynamicProofConfig.default,
+              UpdatesDynamicProofConfig.default
             );
           }
         );
@@ -301,7 +305,8 @@ describe('New Token Standard Tests', () => {
           burnParams,
           mintDynamicProofConfig,
           BurnDynamicProofConfig.default,
-          TransferDynamicProofConfig.default
+          TransferDynamicProofConfig.default,
+          UpdatesDynamicProofConfig.default
         );
       });
 
@@ -327,7 +332,8 @@ describe('New Token Standard Tests', () => {
               burnParams,
               mintDynamicProofConfig,
               BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default
+              TransferDynamicProofConfig.default,
+              UpdatesDynamicProofConfig.default
             );
           }
         );

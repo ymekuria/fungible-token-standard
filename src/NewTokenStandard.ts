@@ -28,6 +28,7 @@ import {
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
+  UpdatesDynamicProofConfig,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -121,7 +122,8 @@ class FungibleToken extends TokenContract {
     burnParams: BurnParams,
     mintDynamicProofConfig: MintDynamicProofConfig,
     burnDynamicProofConfig: BurnDynamicProofConfig,
-    transferDynamicProofConfig: TransferDynamicProofConfig
+    transferDynamicProofConfig: TransferDynamicProofConfig,
+    updatesDynamicProofConfig: UpdatesDynamicProofConfig
   ) {
     this.account.provedState.requireEquals(Bool(false));
 
@@ -140,7 +142,8 @@ class FungibleToken extends TokenContract {
     this.packedDynamicProofConfigs.set(
       mintDynamicProofConfig.packConfigs(
         burnDynamicProofConfig,
-        transferDynamicProofConfig
+        transferDynamicProofConfig,
+        updatesDynamicProofConfig
       )
     );
 
@@ -379,12 +382,21 @@ class FungibleToken extends TokenContract {
     );
   }
 
+  override async approveBase(forest: AccountUpdateForest): Promise<void> {
+    throw new Error('Use the approveUpdates method instead');
+  }
+
   /** Approve `AccountUpdate`s that have been created outside of the token contract.
    *
    * @argument {AccountUpdateForest} updates - The `AccountUpdate`s to approve. Note that the forest size is limited by the base token contract, @see TokenContract.MAX_ACCOUNT_UPDATES The current limit is 9.
    */
   @method
-  async approveBase(updates: AccountUpdateForest): Promise<void> {
+  async approveUpdates(
+    updates: AccountUpdateForest,
+    proof: SideloadedProof,
+    vk: VerificationKey,
+    vKeyMap: VKeyMerkleMap
+  ): Promise<void> {
     let totalBalance = Int64.from(0);
     this.forEachUpdate(updates, (update, usesToken) => {
       // Make sure that the account permissions are not changed
@@ -413,6 +425,21 @@ class FungibleToken extends TokenContract {
     totalBalance.assertEquals(
       Int64.zero,
       FungibleTokenErrors.unbalancedTransaction
+    );
+
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const updatesDynamicProofConfig = UpdatesDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+
+    await this.verifySideLoadedProof(
+      proof,
+      vk,
+      PublicKey.empty(),
+      updatesDynamicProofConfig,
+      vKeyMap,
+      Field(4)
     );
   }
 
@@ -510,6 +537,20 @@ class FungibleToken extends TokenContract {
 
     this.packedDynamicProofConfigs.set(
       transferDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    );
+  }
+
+  @method
+  async updateUpdatesDynamicProofConfig(
+    updatesDynamicProofConfig: UpdatesDynamicProofConfig
+  ) {
+    //! maybe enforce more restriction
+    this.ensureAdminSignature(Bool(true));
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+
+    this.packedDynamicProofConfigs.set(
+      updatesDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
     );
   }
 
