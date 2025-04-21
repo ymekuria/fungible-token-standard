@@ -132,6 +132,7 @@ class FungibleToken extends TokenContract {
     this.decimals.set(decimals);
 
     mintConfig.validate();
+    burnConfig.validate();
     this.packedAmountConfigs.set(
       MintConfig.packConfigs([mintConfig, burnConfig])
     );

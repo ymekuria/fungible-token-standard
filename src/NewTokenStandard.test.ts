@@ -34,13 +34,9 @@ describe('New Token Standard Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
 
   let fee: number,
-    deployerPrivateKey: PrivateKey,
-    deployerPublicKey: PublicKey,
     tokenContract: FungibleToken,
-    mintConfig: MintConfig,
     mintParams: MintParams,
     burnParams: BurnParams,
-    mintDynamicProofConfig: MintDynamicProofConfig,
     vKeyMap: VKeyMerkleMap,
     dummyVkey: VerificationKey,
     dummyProof: SideloadedProof,
@@ -64,11 +60,8 @@ describe('New Token Standard Tests', () => {
     [tokenAdmin, tokenA] = Mina.TestPublicKey.random(7);
 
     [deployer, user1, user2] = localChain.testAccounts;
-    deployerPrivateKey = deployer.key;
-    deployerPublicKey = deployerPrivateKey.toPublicKey();
     tokenContract = new FungibleToken(tokenA);
 
-    mintConfig = MintConfig.default;
     mintParams = new MintParams({
       fixedAmount: UInt64.from(200),
       minAmount: UInt64.from(0),
@@ -81,14 +74,6 @@ describe('New Token Standard Tests', () => {
       maxAmount: UInt64.from(1500),
     });
 
-    mintDynamicProofConfig = new MintDynamicProofConfig({
-      shouldVerify: Bool(false),
-      requireTokenIdMatch: Bool(true),
-      requireMinaBalanceMatch: Bool(true),
-      requireCustomTokenBalanceMatch: Bool(true),
-      requireMinaNonceMatch: Bool(true),
-      requireCustomTokenNonceMatch: Bool(true),
-    });
     vKeyMap = new VKeyMerkleMap();
     dummyVkey = await VerificationKey.dummy();
     dummyProof = await generateDummyDynamicProof(
@@ -98,6 +83,37 @@ describe('New Token Standard Tests', () => {
     programVkey = (await program.compile()).verificationKey;
     fee = 1e8;
   });
+
+  async function testInitializeTx(
+    signers: PrivateKey[],
+    expectedErrorMessage?: string,
+    invalidMintConfig?: MintConfig,
+    invalidMintParams?: MintParams,
+    invalidBurnConfig?: BurnConfig,
+    invalidBurnParams?: BurnParams
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
+        AccountUpdate.fundNewAccount(deployer);
+        await tokenContract.initialize(
+          tokenAdmin,
+          UInt8.from(9),
+          invalidMintConfig ?? MintConfig.default,
+          invalidMintParams ?? mintParams,
+          invalidBurnConfig ?? BurnConfig.default,
+          invalidBurnParams ?? burnParams,
+          MintDynamicProofConfig.default,
+          BurnDynamicProofConfig.default,
+          TransferDynamicProofConfig.default,
+          UpdatesDynamicProofConfig.default
+        );
+      });
+      await tx.prove();
+      await tx.sign(signers).send();
+    } catch (error: any) {
+      expect(error.message).toContain(expectedErrorMessage);
+    }
+  }
 
   async function testMintTx(
     user: PublicKey,
@@ -194,34 +210,25 @@ describe('New Token Standard Tests', () => {
     });
 
     it('should reject initialization when a signature from the token address is missing', async () => {
-      try {
-        const initializeTx = await Mina.transaction(
-          { sender: deployer, fee },
-          async () => {
-            AccountUpdate.fundNewAccount(deployer);
-            await tokenContract.initialize(
-              tokenAdmin,
-              UInt8.from(9),
-              mintConfig,
-              mintParams,
-              BurnConfig.default,
-              burnParams,
-              mintDynamicProofConfig,
-              BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default,
-              UpdatesDynamicProofConfig.default
-            );
-          }
-        );
+      const expectedErrorMessage =
+        'Check signature: Invalid signature on account_update 2';
+      await testInitializeTx([deployer.key], expectedErrorMessage);
+    });
 
-        initializeTx.sign([deployer.key]);
-        await initializeTx.prove();
-        await initializeTx.send();
-      } catch (error: any) {
-        const expectedErrorMessage =
-          'Check signature: Invalid signature on account_update 2';
-        expect(error.message).toContain(expectedErrorMessage);
-      }
+    it('should reject initialization with invalid mintConfig', async () => {
+      const invalidMintConfig = new MintConfig({
+        unauthorized: Bool(false),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(true),
+      });
+
+      const expectedErrorMessage =
+        'Exactly one of the fixed or ranged amount options must be enabled!';
+      await testInitializeTx(
+        [deployer.key, tokenA.key],
+        expectedErrorMessage,
+        invalidMintConfig
+      );
     });
 
     it('should reject initialization with invalid mintParams', async () => {
@@ -231,120 +238,61 @@ describe('New Token Standard Tests', () => {
         maxAmount: UInt64.from(100),
       });
 
-      try {
-        const tx = await Mina.transaction(
-          { sender: deployer, fee },
-          async () => {
-            AccountUpdate.fundNewAccount(deployer);
-            await tokenContract.initialize(
-              tokenAdmin,
-              UInt8.from(9),
-              mintConfig,
-              invalidMintParams,
-              BurnConfig.default,
-              burnParams,
-              mintDynamicProofConfig,
-              BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default,
-              UpdatesDynamicProofConfig.default
-            );
-          }
-        );
-        await tx.prove();
-        await tx.sign([deployer.key, tokenA.key]).send();
-      } catch (error: any) {
-        const expectedErrorMessage = 'Invalid amount range!';
-        expect(error.message).toContain(expectedErrorMessage);
-      }
+      const expectedErrorMessage = 'Invalid amount range!';
+      await testInitializeTx(
+        [deployer.key, tokenA.key],
+        expectedErrorMessage,
+        undefined,
+        invalidMintParams
+      );
     });
 
-    it('should reject initialization with invalid mintConfig', async () => {
-      const invalidMintConfig = new MintConfig({
+    it('should reject initialization with invalid burnConfig', async () => {
+      const invalidBurnConfig = new BurnConfig({
         unauthorized: Bool(true),
         fixedAmount: Bool(true),
         rangedAmount: Bool(true),
       });
-      try {
-        const initializeTx = await Mina.transaction(
-          { sender: deployer, fee },
-          async () => {
-            AccountUpdate.fundNewAccount(deployer);
-            await tokenContract.initialize(
-              tokenAdmin,
-              UInt8.from(9),
-              invalidMintConfig,
-              mintParams,
-              BurnConfig.default,
-              burnParams,
-              mintDynamicProofConfig,
-              BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default,
-              UpdatesDynamicProofConfig.default
-            );
-          }
-        );
 
-        await initializeTx.prove();
-        await initializeTx.sign([deployer.key, tokenA.key]).send();
-      } catch (error: any) {
-        const expectedErrorMessage =
-          'Exactly one of the fixed or ranged amount options must be enabled!';
-        expect(error.message).toContain(expectedErrorMessage);
-      }
+      const expectedErrorMessage =
+        'Exactly one of the fixed or ranged amount options must be enabled!';
+      await testInitializeTx(
+        [deployer.key, tokenA.key],
+        expectedErrorMessage,
+        undefined,
+        undefined,
+        invalidBurnConfig
+      );
+    });
+
+    it('should reject initialization with invalid burnParams', async () => {
+      const invalidBurnParams = new BurnParams({
+        fixedAmount: UInt64.from(200),
+        minAmount: UInt64.from(240),
+        maxAmount: UInt64.from(150),
+      });
+
+      const expectedErrorMessage = 'Invalid amount range!';
+      await testInitializeTx(
+        [deployer.key, tokenA.key],
+        expectedErrorMessage,
+        undefined,
+        undefined,
+        undefined,
+        invalidBurnParams
+      );
     });
 
     it('Should initialize tokenA contract', async () => {
-      const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
-        AccountUpdate.fundNewAccount(deployer);
-        await tokenContract.initialize(
-          tokenAdmin,
-          UInt8.from(9),
-          mintConfig,
-          mintParams,
-          BurnConfig.default,
-          burnParams,
-          mintDynamicProofConfig,
-          BurnDynamicProofConfig.default,
-          TransferDynamicProofConfig.default,
-          UpdatesDynamicProofConfig.default
-        );
-      });
-
-      tx.sign([deployer.key, tokenA.key]);
-
-      await tx.prove();
-      await tx.send();
+      await testInitializeTx([deployer.key, tokenA.key]);
     });
 
     //! Throws an error because the first `initialize` has set the permissions to impossible
     //! not because of the `provedState` precondition
     it('Should prevent calling `initialize()` a second time', async () => {
-      try {
-        const initializeTx = await Mina.transaction(
-          { sender: deployer, fee },
-          async () => {
-            await tokenContract.initialize(
-              tokenAdmin,
-              UInt8.from(9),
-              mintConfig,
-              mintParams,
-              BurnConfig.default,
-              burnParams,
-              mintDynamicProofConfig,
-              BurnDynamicProofConfig.default,
-              TransferDynamicProofConfig.default,
-              UpdatesDynamicProofConfig.default
-            );
-          }
-        );
-
-        await initializeTx.prove();
-        await initializeTx.sign([deployer.key, tokenA.key]).send();
-      } catch (error: any) {
-        const expectedErrorMessage =
-          "Cannot update field 'permissions' because permission for this field is 'Impossible'";
-        expect(error.message).toContain(expectedErrorMessage);
-      }
+      const expectedErrorMessage =
+        "Cannot update field 'permissions' because permission for this field is 'Impossible'";
+      await testInitializeTx([deployer.key, tokenA.key], expectedErrorMessage);
     });
   });
 
@@ -720,7 +668,7 @@ describe('New Token Standard Tests', () => {
         async () => {
           const sendUpdate = AccountUpdate.createSigned(user1);
           sendUpdate.send({
-            to: deployerPublicKey,
+            to: deployer,
             amount: UInt64.from(1e9),
           });
         }
