@@ -13,22 +13,63 @@ export {
 };
 
 /**
- * `MintConfig` defines the permission and constraint settings for minting tokens.
+ * `AmountConfig` defines shared constraints for fixed and ranged value settings
+ * used in minting and burning operations.
  *
- * This configuration determines whether a minting operation:
- * - requires authorization,
- * - allows minting a fixed amount, or
- * - supports minting a variable amount within a specified range.
- *
- * @property unauthorized - If true, disables the admin signature requirement, allowing any user to mint.
- * @property fixedAmount - If true, restricts minting to a fixed, predetermined amount (e.g., 200 tokens).
- * @property rangedAmount - If true, allows minting a variable amount within a specified range.
+ * @property unauthorized - If true, disables admin signature requirement.
+ * @property fixedAmount - If true, restricts the operation to a fixed amount.
+ * @property rangedAmount - If true, allows the operation to specify a ranged amount.
  */
-class MintConfig extends Struct({
+class AmountConfig extends Struct({
   unauthorized: Bool,
   fixedAmount: Bool,
   rangedAmount: Bool,
 }) {
+  /**
+   * Serializes the amount configuration into an array of 3 `Bool` bits.
+   *
+   * @returns An array of bits representing the configuration.
+   */
+  toBits(): Bool[] {
+    return [this.unauthorized, this.fixedAmount, this.rangedAmount];
+  }
+
+  /**
+   * Validates that exactly one burn mode is enabled; either fixed or ranged.
+   *
+   * @throws If both or neither `fixedAmount` and `rangedAmount` are enabled.
+   */
+  validate() {
+    this.fixedAmount
+      .toField()
+      .add(this.rangedAmount.toField())
+      .assertEquals(
+        1,
+        'Exactly one of the fixed or ranged amount options must be enabled!'
+      );
+  }
+
+  /**
+   * Packs two `AmountConfig` instances, typically mint and burn, into a single 6-bit `Field`.
+   *
+   * The first 3 bits represent the first config (mint), and the last 3 bits represent the second (burn).
+   *
+   * @param configs - An array of exactly two `AmountConfig` instances: [mint, burn].
+   * @returns A packed `Field` combining both configs.
+   */
+  static packConfigs(configs: [AmountConfig, AmountConfig]): Field {
+    if (configs.length !== 2)
+      throw new Error('Expected exactly two configs: [mint, burn]');
+    return Field.fromBits([...configs[0].toBits(), ...configs[1].toBits()]);
+  }
+}
+
+/**
+ * `MintConfig` defines the permission and constraint settings for minting tokens.
+ *
+ * @see {@link AmountConfig} for shared behavior and validation logic.
+ */
+class MintConfig extends AmountConfig {
   /**
    * The default mint configuration.
    *
@@ -65,23 +106,6 @@ class MintConfig extends Struct({
   }
 
   /**
-   * Serializes the mint configuration into an array of 3 boolean bits.
-   *
-   * @returns An array of `Bool` bits representing this configuration.
-   */
-  toBits() {
-    const { unauthorized, fixedAmount, rangedAmount } = this;
-
-    const serializedMintConfig = [
-      unauthorized.toField().toBits(1),
-      fixedAmount.toField().toBits(1),
-      rangedAmount.toField().toBits(1),
-    ].flat();
-
-    return serializedMintConfig;
-  }
-
-  /**
    * Updates the `packedConfigs` (containing both mint and burn configs)
    * by replacing the first 3 bits (mint config) with the bits from this instance.
    *
@@ -101,54 +125,14 @@ class MintConfig extends Struct({
 
     return updatedPackedConfigs;
   }
-
-  /**
-   * Packs this mint configuration together with a provided burn configuration
-   * into a single 6-bit `Field`.
-   *
-   * The first 3 bits represent the mint config, and the last 3 bits represent the burn config.
-   *
-   * @param burnConfig - The burn configuration to combine with this mint config.
-   * @returns A packed `Field` containing both configs.
-   */
-  packConfigs(burnConfig: BurnConfig): Field {
-    return Field.fromBits([...this.toBits(), ...burnConfig.toBits()]);
-  }
-
-  /**
-   * Validates that exactly one minting mode is enabled—either fixed or ranged.
-   *
-   * @throws If both or neither `fixedAmount` and `rangedAmount` are enabled.
-   */
-  validate() {
-    const { fixedAmount, rangedAmount } = this;
-    fixedAmount
-      .toField()
-      .add(rangedAmount.toField())
-      .assertEquals(
-        1,
-        'Exactly one of the fixed or ranged amount options must be enabled!'
-      );
-  }
 }
 
 /**
  * `BurnConfig` defines the permission and constraint settings for burning tokens.
  *
- * This configuration determines whether a burn operation:
- * - requires authorization,
- * - is restricted to a fixed amount, or
- * - supports a variable amount within a defined range.
- *
- * @property unauthorized - If true, disables the admin signature requirement, allowing any user to burn.
- * @property fixedAmount - If true, restricts burning to a fixed, predetermined amount (e.g., 200 tokens).
- * @property rangedAmount - If true, allows burning a variable amount within a specified range.
+ * @see {@link AmountConfig} for shared behavior and validation logic.
  */
-class BurnConfig extends Struct({
-  unauthorized: Bool,
-  fixedAmount: Bool,
-  rangedAmount: Bool,
-}) {
+class BurnConfig extends AmountConfig {
   /**
    * The default burn configuration.
    *
@@ -185,23 +169,6 @@ class BurnConfig extends Struct({
   }
 
   /**
-   * Serializes the burn configuration into an array of 3 `Bool` bits.
-   *
-   * @returns An array of bits representing the configuration.
-   */
-  toBits() {
-    const { unauthorized, fixedAmount, rangedAmount } = this;
-
-    const serializedAmountConfig = [
-      unauthorized.toField().toBits(1),
-      fixedAmount.toField().toBits(1),
-      rangedAmount.toField().toBits(1),
-    ].flat();
-
-    return serializedAmountConfig;
-  }
-
-  /**
    * Updates the `packedConfigs` (containing both mint and burn configs)
    * by replacing the last 3 bits (mint config) with the bits from this instance.
    *
@@ -220,35 +187,6 @@ class BurnConfig extends Struct({
     ]);
 
     return updatedPackedConfigs;
-  }
-
-  /**
-   * Validates that exactly one burn mode is enabled—either fixed or ranged.
-   *
-   * @throws If both or neither `fixedAmount` and `rangedAmount` are enabled.
-   */
-  validate() {
-    const { fixedAmount, rangedAmount } = this;
-    fixedAmount
-      .toField()
-      .add(rangedAmount.toField())
-      .assertEquals(
-        1,
-        'Exactly one of the fixed or ranged amount options must be enabled!'
-      );
-  }
-
-  /**
-   * Packs this burn configuration together with a provided mint configuration
-   * into a single 6-bit `Field`.
-   *
-   * The first 3 bits represent the mint config, and the last 3 bits represent the burn config.
-   *
-   * @param mintConfig - The `MintConfig` instance to pack alongside this `BurnConfig`.
-   * @returns A packed `Field` containing both mint and burn configs.
-   */
-  packConfigs(mintConfig: BurnConfig): Field {
-    return Field.fromBits([...mintConfig.toBits(), ...this.toBits()]);
   }
 }
 

@@ -132,7 +132,9 @@ class FungibleToken extends TokenContract {
     this.decimals.set(decimals);
 
     mintConfig.validate();
-    this.packedAmountConfigs.set(mintConfig.packConfigs(burnConfig));
+    this.packedAmountConfigs.set(
+      MintConfig.packConfigs([mintConfig, burnConfig])
+    );
 
     mintParams.validate();
     this.packedMintParams.set(mintParams.pack());
@@ -384,7 +386,7 @@ class FungibleToken extends TokenContract {
     );
   }
 
-  override async approveBase(forest: AccountUpdateForest): Promise<void> {
+  async approveBase(forest: AccountUpdateForest): Promise<void> {
     throw new Error('Use the approveUpdates method instead');
   }
 
