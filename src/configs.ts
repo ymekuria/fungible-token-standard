@@ -191,19 +191,50 @@ class BurnConfig extends AmountConfig {
 }
 
 /**
- * MintParams defines the parameters for token minting.
+ * `AmountParams` defines the shared structure for specifying token operation amounts,
+ * supporting both fixed and ranged configurations.
  *
- * @property fixedAmount - The fixed amount of tokens to mint, if applicable.
- * @property minAmount - The minimum number of tokens that can be minted in a ranged mint.
- * @property maxAmount - The maximum number of tokens that can be minted in a ranged mint.
+ * This class is extended by both {@link MintParams} and {@link BurnParams} to represent
+ * the parameters for minting and burning tokens, respectively.
+ *
+ * @property fixedAmount - The fixed amount of tokens to process.
+ * @property minAmount - The minimum value allowed in a ranged operation.
+ * @property maxAmount - The maximum value allowed in a ranged operation.
  */
-class MintParams extends Struct({
+class AmountParams extends Struct({
   fixedAmount: UInt64,
   minAmount: UInt64,
   maxAmount: UInt64,
 }) {
   /**
-   * Unpacks a Field value into a MintParams instance.
+   * Packs the `AmountParams` instance into a single `Field`.
+   *
+   * Internally, this converts the `fixedAmount`, `minAmount`, and `maxAmount`
+   * into 64-bit segments and concatenates them into a 192-bit field.
+   *
+   * @returns A packed `Field` representing the parameter values.
+   */
+  pack(): Field {
+    return Field.fromBits(this.toBits());
+  }
+
+  /**
+   * Converts the parameter values into a flat array of 192 bits.
+   *
+   * The bit layout is: [fixedAmount (64 bits), minAmount (64 bits), maxAmount (64 bits)].
+   *
+   * @returns An array of 192 `Bool` values.
+   */
+  toBits(): Bool[] {
+    return [
+      ...this.fixedAmount.toBits(),
+      ...this.minAmount.toBits(),
+      ...this.maxAmount.toBits(),
+    ];
+  }
+
+  /**
+   * Unpacks a Field value into an AmountParams instance.
    *
    * The packed Field is expected to be composed of three concatenated 64-bit segments representing:
    * - fixedAmount,
@@ -212,120 +243,16 @@ class MintParams extends Struct({
    *
    * Each segment is converted back into a UInt64 value.
    *
-   * @param packedMintParams - The packed mint parameters as a Field.
-   * @returns A new MintParams instance with the unpacked fixed, minimum, and maximum amounts.
+   * @param packedParams - The packed parameters as a Field.
+   * @returns A new AmountParams instance with the unpacked fixed, minimum, and maximum amounts.
    */
-  static unpack(packedMintParams: Field) {
-    const serializedMintParams = packedMintParams.toBits(64 * 3);
-
-    const fixedAmount = UInt64.fromBits(serializedMintParams.slice(0, 64));
-    const minAmount = UInt64.fromBits(serializedMintParams.slice(64, 64 * 2));
-    const maxAmount = UInt64.fromBits(
-      serializedMintParams.slice(64 * 2, 64 * 3)
-    );
-
+  static unpack(packedParams: Field) {
+    const bits = packedParams.toBits(64 * 3);
     return new this({
-      fixedAmount,
-      minAmount,
-      maxAmount,
+      fixedAmount: UInt64.fromBits(bits.slice(0, 64)),
+      minAmount: UInt64.fromBits(bits.slice(64, 64 * 2)),
+      maxAmount: UInt64.fromBits(bits.slice(64 * 2, 64 * 3)),
     });
-  }
-
-  /**
-   * Packs the mint parameters into a single Field value.
-   *
-   * Each mint parameter (fixedAmount, minAmount, and maxAmount) is converted into a 64-bit representation,
-   * concatenated, and then assembled into one Field.
-   *
-   * @param mintParams - The mint parameters to pack.
-   * @returns The packed mint parameters as a Field.
-   */
-  pack() {
-    const { fixedAmount, minAmount, maxAmount } = this;
-    const serializedMintParams = [
-      fixedAmount.toBits(),
-      minAmount.toBits(),
-      maxAmount.toBits(),
-    ].flat();
-
-    const packedMintParams = Field.fromBits(serializedMintParams);
-
-    return packedMintParams;
-  }
-
-  /**
-   * Validates that the minting range is correctly configured by asserting that
-   * `minAmount` is less than `maxAmount`.
-   *
-   * @throws If `minAmount` is not less than `maxAmount`.
-   */
-  validate() {
-    const { minAmount, maxAmount } = this;
-    minAmount.assertLessThan(maxAmount, 'Invalid mint range!');
-  }
-}
-
-/**
- * MintParams defines the parameters for token minting.
- *
- * @property fixedAmount - The fixed amount of tokens to burn, if applicable.
- * @property minAmount - The minimum number of tokens that can be burned in a ranged mint.
- * @property maxAmount - The maximum number of tokens that can be burned in a ranged mint.
- */
-class BurnParams extends Struct({
-  fixedAmount: UInt64,
-  minAmount: UInt64,
-  maxAmount: UInt64,
-}) {
-  /**
-   * Unpacks a Field value into a BurnParams instance.
-   *
-   * The packed Field is expected to be composed of three concatenated 64-bit segments representing:
-   * - fixedAmount,
-   * - minAmount, and
-   * - maxAmount.
-   *
-   * Each segment is converted back into a UInt64 value.
-   *
-   * @param packedBurnParams - The packed burn parameters as a Field.
-   * @returns A new BurnParams instance with the unpacked fixed, minimum, and maximum amounts.
-   */
-  static unpack(packedBurnParams: Field) {
-    const serializedBurnParams = packedBurnParams.toBits(64 * 3);
-
-    const fixedAmount = UInt64.fromBits(serializedBurnParams.slice(0, 64));
-    const minAmount = UInt64.fromBits(serializedBurnParams.slice(64, 64 * 2));
-    const maxAmount = UInt64.fromBits(
-      serializedBurnParams.slice(64 * 2, 64 * 3)
-    );
-
-    return new this({
-      fixedAmount,
-      minAmount,
-      maxAmount,
-    });
-  }
-
-  /**
-   * Packs the burn parameters into a single Field value.
-   *
-   * Each burn parameter (fixedAmount, minAmount, and maxAmount) is converted into a 64-bit representation,
-   * concatenated, and then assembled into one Field.
-   *
-   * @param burnParams - The burn parameters to pack.
-   * @returns The packed burn parameters as a Field.
-   */
-  pack() {
-    const { fixedAmount, minAmount, maxAmount } = this;
-    const serializedBurnParams = [
-      fixedAmount.toBits(),
-      minAmount.toBits(),
-      maxAmount.toBits(),
-    ].flat();
-
-    const packedBurnParams = Field.fromBits(serializedBurnParams);
-
-    return packedBurnParams;
   }
 
   /**
@@ -335,10 +262,25 @@ class BurnParams extends Struct({
    * @throws If `minAmount` is not less than `maxAmount`.
    */
   validate() {
-    const { minAmount, maxAmount } = this;
-    minAmount.assertLessThan(maxAmount, 'Invalid burn range!');
+    this.minAmount.assertLessThan(this.maxAmount, 'Invalid amount range!');
   }
 }
+
+/**
+ * `MintParams` defines the parameters for token minting.
+ *
+ * Inherits all behavior from {@link AmountParams}, including serialization,
+ * deserialization, and range validation.
+ */
+class MintParams extends AmountParams {}
+
+/**
+ * `BurnParams` defines the parameters for token burning.
+ *
+ * Inherits all behavior from {@link AmountParams}, including serialization,
+ * deserialization, and range validation.
+ */
+class BurnParams extends AmountParams {}
 
 /**
  * `DynamicProofConfig` defines a generic configuration to control and verify constraints for side-loaded proofs in token operations.

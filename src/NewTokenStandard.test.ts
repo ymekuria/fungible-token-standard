@@ -253,7 +253,7 @@ describe('New Token Standard Tests', () => {
         await tx.prove();
         await tx.sign([deployer.key, tokenA.key]).send();
       } catch (error: any) {
-        const expectedErrorMessage = 'Invalid mint range!';
+        const expectedErrorMessage = 'Invalid amount range!';
         expect(error.message).toContain(expectedErrorMessage);
       }
     });
@@ -441,7 +441,7 @@ describe('New Token Standard Tests', () => {
               tokenAdmin.key,
             ]);
           } catch (error: any) {
-            const expectedErrorMessage = 'Invalid mint range!';
+            const expectedErrorMessage = 'Invalid amount range!';
             expect(error.message).toContain(expectedErrorMessage);
           }
         });
