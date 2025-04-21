@@ -29,6 +29,7 @@ import {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  DynamicProofConfig,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -140,11 +141,12 @@ class FungibleToken extends TokenContract {
     this.packedBurnParams.set(burnParams.pack());
 
     this.packedDynamicProofConfigs.set(
-      mintDynamicProofConfig.packConfigs(
+      MintDynamicProofConfig.packConfigs([
+        mintDynamicProofConfig,
         burnDynamicProofConfig,
         transferDynamicProofConfig,
-        updatesDynamicProofConfig
-      )
+        updatesDynamicProofConfig,
+      ])
     );
 
     const emptyVKeyMap = new VKeyMerkleMap();
@@ -622,7 +624,7 @@ class FungibleToken extends TokenContract {
     proof: SideloadedProof,
     vk: VerificationKey,
     recipient: PublicKey,
-    dynamicProofConfig: MintDynamicProofConfig | BurnDynamicProofConfig,
+    dynamicProofConfig: DynamicProofConfig,
     vKeyMap: VKeyMerkleMap,
     operationKey: Field
   ) {
