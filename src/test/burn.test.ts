@@ -29,10 +29,9 @@ import {
   program2,
 } from '../side-loaded/program.eg.js';
 
-//! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
 const proofsEnabled = false;
 
-describe('New Token Standard Mint Tests', () => {
+describe('New Token Standard Burn Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
 
   let fee: number,
@@ -71,9 +70,9 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     burnParams = new BurnParams({
-      fixedAmount: UInt64.from(500),
-      minAmount: UInt64.from(100),
-      maxAmount: UInt64.from(1500),
+      fixedAmount: UInt64.from(100),
+      minAmount: UInt64.from(50),
+      maxAmount: UInt64.from(500),
     });
 
     vKeyMap = new VKeyMerkleMap();
@@ -86,43 +85,9 @@ describe('New Token Standard Mint Tests', () => {
     fee = 1e8;
   });
 
-  async function testInitializeTx(
-    signers: PrivateKey[],
-    expectedErrorMessage?: string,
-    invalidMintConfig?: MintConfig,
-    invalidMintParams?: MintParams,
-    invalidBurnConfig?: BurnConfig,
-    invalidBurnParams?: BurnParams
-  ) {
-    try {
-      const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
-        AccountUpdate.fundNewAccount(deployer);
-        await tokenContract.initialize(
-          tokenAdmin,
-          UInt8.from(9),
-          invalidMintConfig ?? MintConfig.default,
-          invalidMintParams ?? mintParams,
-          invalidBurnConfig ?? BurnConfig.default,
-          invalidBurnParams ?? burnParams,
-          MintDynamicProofConfig.default,
-          BurnDynamicProofConfig.default,
-          TransferDynamicProofConfig.default,
-          UpdatesDynamicProofConfig.default
-        );
-      });
-      await tx.prove();
-      await tx.sign(signers).send();
-
-      if (expectedErrorMessage)
-        throw new Error('Test should have failed but didnt!');
-    } catch (error: unknown) {
-      expect((error as Error).message).toContain(expectedErrorMessage);
-    }
-  }
-
-  async function testMintTx(
+  async function testBurnTx(
     user: PublicKey,
-    mintAmount: UInt64,
+    burnAmount: UInt64,
     signers: PrivateKey[],
     expectedErrorMessage?: string,
     numberOfAccounts = 2
@@ -131,9 +96,9 @@ describe('New Token Standard Mint Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.mint(
+        await tokenContract.burn(
           user,
-          mintAmount,
+          burnAmount,
           dummyProof,
           dummyVkey,
           vKeyMap
@@ -143,7 +108,7 @@ describe('New Token Standard Mint Tests', () => {
       await tx.sign(signers).send().wait();
 
       const userBalanceAfter = await tokenContract.getBalanceOf(user);
-      expect(userBalanceAfter).toEqual(userBalanceBefore.add(mintAmount));
+      expect(userBalanceAfter).toEqual(userBalanceBefore.sub(burnAmount));
 
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
@@ -152,25 +117,25 @@ describe('New Token Standard Mint Tests', () => {
     }
   }
 
-  async function updateMintConfigTx(
+  async function updateBurnConfigTx(
     user: PublicKey,
-    mintConfig: MintConfig,
+    burnConfig: BurnConfig,
     signers: PrivateKey[],
     expectedErrorMessage?: string
   ) {
     try {
-      const updateMintConfigTx = await Mina.transaction(
+      const updateBurnConfigTx = await Mina.transaction(
         { sender: user, fee },
         async () => {
-          await tokenContract.updateMintConfig(mintConfig);
+          await tokenContract.updateBurnConfig(burnConfig);
         }
       );
-      await updateMintConfigTx.prove();
-      await updateMintConfigTx.sign(signers).send().wait();
+      await updateBurnConfigTx.prove();
+      await updateBurnConfigTx.sign(signers).send().wait();
 
       expect(
-        MintConfig.unpack(tokenContract.packedAmountConfigs.get())
-      ).toEqual(mintConfig);
+        BurnConfig.unpack(tokenContract.packedAmountConfigs.get())
+      ).toEqual(burnConfig);
 
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
@@ -179,23 +144,23 @@ describe('New Token Standard Mint Tests', () => {
     }
   }
 
-  async function updateMintParamsTx(
+  async function updateBurnParamsTx(
     user: PublicKey,
-    mintParams: MintParams,
+    burnParams: BurnParams,
     signers: PrivateKey[],
     expectedErrorMessage?: string
   ) {
     try {
-      const updateMintParamsTx = await Mina.transaction(
+      const updateBurnParamsTx = await Mina.transaction(
         { sender: user, fee },
         async () => {
-          await tokenContract.updateMintParams(mintParams);
+          await tokenContract.updateBurnParams(burnParams);
         }
       );
-      await updateMintParamsTx.prove();
-      await updateMintParamsTx.sign(signers).send().wait();
+      await updateBurnParamsTx.prove();
+      await updateBurnParamsTx.sign(signers).send().wait();
 
-      expect(tokenContract.packedMintParams.get()).toEqual(mintParams.pack());
+      expect(tokenContract.packedBurnParams.get()).toEqual(burnParams.pack());
 
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
@@ -230,9 +195,9 @@ describe('New Token Standard Mint Tests', () => {
     }
   }
 
-  async function testMintSLTx(
+  async function testBurnSLTx(
     user: PublicKey,
-    mintAmount: UInt64,
+    burnAmount: UInt64,
     signers: PrivateKey[],
     proof?: SideloadedProof,
     vKey?: VerificationKey,
@@ -242,9 +207,9 @@ describe('New Token Standard Mint Tests', () => {
     try {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
-        await tokenContract.mint(
+        await tokenContract.burn(
           user,
-          mintAmount,
+          burnAmount,
           proof ?? dummyProof,
           vKey ?? dummyVkey,
           vKeyMerkleMap ?? vKeyMap
@@ -254,7 +219,7 @@ describe('New Token Standard Mint Tests', () => {
       await tx.sign(signers).send().wait();
 
       const userBalanceAfter = await tokenContract.getBalanceOf(user);
-      expect(userBalanceAfter).toEqual(userBalanceBefore.add(mintAmount));
+      expect(userBalanceAfter).toEqual(userBalanceBefore.sub(burnAmount));
 
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
@@ -280,120 +245,73 @@ describe('New Token Standard Mint Tests', () => {
       await tx.send();
     });
 
-    it('should reject initialization when a signature from the token address is missing', async () => {
-      const expectedErrorMessage =
-        'Check signature: Invalid signature on account_update 2';
-      await testInitializeTx([deployer.key], expectedErrorMessage);
-    });
-
-    it('should reject initialization with invalid mintConfig', async () => {
-      const invalidMintConfig = new MintConfig({
-        unauthorized: Bool(false),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(true),
+    it('should initialize tokenA contract', async () => {
+      const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
+        AccountUpdate.fundNewAccount(deployer);
+        await tokenContract.initialize(
+          tokenAdmin,
+          UInt8.from(9),
+          MintConfig.default,
+          mintParams,
+          BurnConfig.default,
+          burnParams,
+          MintDynamicProofConfig.default,
+          BurnDynamicProofConfig.default,
+          TransferDynamicProofConfig.default,
+          UpdatesDynamicProofConfig.default
+        );
       });
-
-      const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
-      await testInitializeTx(
-        [deployer.key, tokenA.key],
-        expectedErrorMessage,
-        invalidMintConfig
-      );
+      await tx.prove();
+      await tx.sign([deployer.key, tokenA.key]).send();
     });
 
-    it('should reject initialization with invalid mintParams', async () => {
-      const invalidMintParams = new MintParams({
-        fixedAmount: UInt64.from(100),
-        minAmount: UInt64.from(300),
-        maxAmount: UInt64.from(100),
+    it('should mint for user1 and user2', async () => {
+      const mintAmount = UInt64.from(1000);
+      const tx = await Mina.transaction({ sender: user1, fee }, async () => {
+        AccountUpdate.fundNewAccount(user1, 3);
+        await tokenContract.mint(
+          user1,
+          mintAmount,
+          dummyProof,
+          dummyVkey,
+          vKeyMap
+        );
+
+        await tokenContract.mint(
+          user2,
+          mintAmount,
+          dummyProof,
+          dummyVkey,
+          vKeyMap
+        );
       });
-
-      const expectedErrorMessage = 'Invalid amount range!';
-      await testInitializeTx(
-        [deployer.key, tokenA.key],
-        expectedErrorMessage,
-        undefined,
-        invalidMintParams
-      );
-    });
-
-    it('should reject initialization with invalid burnConfig', async () => {
-      const invalidBurnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(true),
-      });
-
-      const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
-      await testInitializeTx(
-        [deployer.key, tokenA.key],
-        expectedErrorMessage,
-        undefined,
-        undefined,
-        invalidBurnConfig
-      );
-    });
-
-    it('should reject initialization with invalid burnParams', async () => {
-      const invalidBurnParams = new BurnParams({
-        fixedAmount: UInt64.from(200),
-        minAmount: UInt64.from(240),
-        maxAmount: UInt64.from(150),
-      });
-
-      const expectedErrorMessage = 'Invalid amount range!';
-      await testInitializeTx(
-        [deployer.key, tokenA.key],
-        expectedErrorMessage,
-        undefined,
-        undefined,
-        undefined,
-        invalidBurnParams
-      );
-    });
-
-    it('Should initialize tokenA contract', async () => {
-      await testInitializeTx([deployer.key, tokenA.key]);
-    });
-
-    //! Throws an error because the first `initialize` has set the permissions to impossible
-    //! not because of the `provedState` precondition
-    it('Should prevent calling `initialize()` a second time', async () => {
-      const expectedErrorMessage =
-        "Cannot update field 'permissions' because permission for this field is 'Impossible'";
-      await testInitializeTx([deployer.key, tokenA.key], expectedErrorMessage);
+      await tx.prove();
+      await tx.sign([user1.key, tokenAdmin.key]).send().wait();
     });
   });
 
-  describe('Mint Config: Default: Authorized/Ranged', () => {
-    it('should mint an amount within the valid range: user', async () => {
-      await testMintTx(user1, UInt64.from(200), [user1.key, tokenAdmin.key]);
+  describe('Burn Config: Default: Unauthorized/Ranged', () => {
+    it('should allow burning without authorization', async () => {
+      await testBurnTx(user2, UInt64.from(100), [user2.key], undefined, 0);
     });
 
-    it('should reject minting an amount outside the valid range', async () => {
-      await testMintTx(
-        user1,
-        UInt64.from(1100),
-        [user1.key, tokenAdmin.key],
-        'Not allowed to mint tokens'
-      );
+    it('should burn an amount within the valid range: user', async () => {
+      await testBurnTx(user1, UInt64.from(50), [user1.key], undefined, 0);
     });
 
-    it('should reject unauthorized minting', async () => {
-      await testMintTx(
+    it('should reject burning an amount outside the valid range', async () => {
+      await testBurnTx(
         user1,
-        UInt64.from(300),
+        UInt64.from(700),
         [user1.key],
-        'the required authorization was not provided or is invalid.'
+        'Not allowed to burn tokens'
       );
     });
   });
 
-  describe('Update Mint Config: Unauthorized/Fixed', () => {
-    it('should reject mintConfig update when both range and fixed mint are enabled', async () => {
-      const mintConfig = new MintConfig({
+  describe('Update Burn Config: Unauthorized/Fixed', () => {
+    it('should reject burnConfig update when both range and fixed burn are enabled', async () => {
+      const burnConfig = new BurnConfig({
         unauthorized: Bool(true),
         fixedAmount: Bool(true),
         rangedAmount: Bool(true),
@@ -401,16 +319,17 @@ describe('New Token Standard Mint Tests', () => {
 
       const expectedErrorMessage =
         'Exactly one of the fixed or ranged amount options must be enabled!';
-      await updateMintConfigTx(
+      await updateBurnConfigTx(
         user1,
-        mintConfig,
+        burnConfig,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
     });
 
-    it('should reject mintConfig update when unauthorized by the admin', async () => {
-      const mintConfig = new MintConfig({
+    //! should test authorized burns
+    it('should reject burnConfig update when unauthorized by the admin', async () => {
+      const burnConfig = new BurnConfig({
         unauthorized: Bool(true),
         fixedAmount: Bool(true),
         rangedAmount: Bool(false),
@@ -418,95 +337,128 @@ describe('New Token Standard Mint Tests', () => {
 
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
-      await updateMintConfigTx(
+      await updateBurnConfigTx(
         user2,
-        mintConfig,
+        burnConfig,
         [user2.key],
         expectedErrorMessage
       );
     });
 
-    it('should update packed mintConfig', async () => {
-      const mintConfig = new MintConfig({
+    it('should update packed burnConfig', async () => {
+      const burnConfig = new BurnConfig({
         unauthorized: Bool(true),
         fixedAmount: Bool(true),
         rangedAmount: Bool(false),
       });
 
-      await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);
+      await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
     });
   });
 
-  describe('Update Mint Params', () => {
-    it('should reject mintParams update given an invalid range', async () => {
-      mintParams = new MintParams({
-        fixedAmount: UInt64.from(200),
-        minAmount: UInt64.from(500),
-        maxAmount: UInt64.from(0),
+  describe('Update Burn Params', () => {
+    it('should reject burnParams update given an invalid range', async () => {
+      burnParams = new BurnParams({
+        fixedAmount: UInt64.from(300),
+        minAmount: UInt64.from(100),
+        maxAmount: UInt64.from(50),
       });
 
       const expectedErrorMessage = 'Invalid amount range!';
-      await updateMintParamsTx(
+      await updateBurnParamsTx(
         user2,
-        mintParams,
+        burnParams,
         [user2.key, tokenAdmin.key],
         expectedErrorMessage
       );
     });
 
-    it('should reject mintParams update when unauthorized by the admin', async () => {
-      mintParams = new MintParams({
-        fixedAmount: UInt64.from(600),
+    it('should reject burnParams update when unauthorized by the admin', async () => {
+      burnParams = new BurnParams({
+        fixedAmount: UInt64.from(150),
         minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(900),
+        maxAmount: UInt64.from(850),
       });
 
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
-      await updateMintParamsTx(
+      await updateBurnParamsTx(
         user1,
-        mintParams,
+        burnParams,
         [user1.key],
         expectedErrorMessage
       );
     });
 
-    it('should update packed mintParams', async () => {
-      await updateMintParamsTx(user1, mintParams, [user1.key, tokenAdmin.key]);
+    it('should update packed burnParams', async () => {
+      await updateBurnParamsTx(user1, burnParams, [user1.key, tokenAdmin.key]);
     });
   });
 
-  describe('Mint Config: Unauthorized/Fixed', () => {
-    it('should allow minting without authorization', async () => {
-      await testMintTx(user2, UInt64.from(600), [user2.key], undefined, 1);
-    });
-
-    it('should reject minting an amount different from the fixed value', async () => {
-      await testMintTx(
+  // burn fixed amount is set to 150
+  describe('Burn Config: Unauthorized/Fixed', () => {
+    it('should reject burning an amount different from the fixed value', async () => {
+      await testBurnTx(
         user1,
-        UInt64.from(500),
+        UInt64.from(50),
         [user1.key],
-        'Not allowed to mint tokens'
+        'Not allowed to burn tokens',
+        0
       );
     });
+
+    it('should only burn an amount equal to the fixed value', async () => {
+      await testBurnTx(user2, UInt64.from(150), [user2.key], undefined, 0);
+    });
   });
 
-  describe('Update Mint Dynamic Proof Config', () => {
-    it('should reject mintDynamicProofConfig update when unauthorized by the admin', async () => {
-      try {
-        let mintDynamicProofConfig = MintDynamicProofConfig.default;
-        mintDynamicProofConfig.shouldVerify = Bool(true);
+  describe('Burn Config: Authorized/Fixed', () => {
+    it('update burn config to enforce admin authorization', async () => {
+      const burnConfig = new BurnConfig({
+        unauthorized: Bool(false),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(false),
+      });
 
-        const updateMintDynamicProofConfigTx = await Mina.transaction(
+      await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
+    });
+
+    it('should reject unauthorized minting', async () => {
+      await testBurnTx(
+        user1,
+        UInt64.from(150),
+        [user1.key],
+        'the required authorization was not provided or is invalid.'
+      );
+    });
+
+    it('update burn config again to disable admin authorization', async () => {
+      const burnConfig = new BurnConfig({
+        unauthorized: Bool(true),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(false),
+      });
+
+      await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
+    });
+  });
+
+  describe('Update Burn Dynamic Proof Config', () => {
+    it('should reject burnDynamicProofConfig update when unauthorized by the admin', async () => {
+      try {
+        let burnDynamicProofConfig = BurnDynamicProofConfig.default;
+        burnDynamicProofConfig.shouldVerify = Bool(true);
+
+        const updateBurnDynamicProofConfigTx = await Mina.transaction(
           { sender: user2, fee },
           async () => {
-            await tokenContract.updateMintDynamicProofConfig(
-              mintDynamicProofConfig
+            await tokenContract.updateBurnDynamicProofConfig(
+              burnDynamicProofConfig
             );
           }
         );
-        await updateMintDynamicProofConfigTx.prove();
-        await updateMintDynamicProofConfigTx.sign([user2.key]).send().wait();
+        await updateBurnDynamicProofConfigTx.prove();
+        await updateBurnDynamicProofConfigTx.sign([user2.key]).send().wait();
       } catch (error: unknown) {
         const expectedErrorMessage =
           'the required authorization was not provided or is invalid';
@@ -514,20 +466,20 @@ describe('New Token Standard Mint Tests', () => {
       }
     });
 
-    it('update mint dynamic proof config: enable side-loaded verification', async () => {
-      let mintDynamicProofConfig = MintDynamicProofConfig.default;
-      mintDynamicProofConfig.shouldVerify = Bool(true);
+    it('update burn dynamic proof config: enable side-loaded verification', async () => {
+      let burnDynamicProofConfig = BurnDynamicProofConfig.default;
+      burnDynamicProofConfig.shouldVerify = Bool(true);
 
-      const updateMintDynamicProofConfigTx = await Mina.transaction(
+      const updateBurnDynamicProofConfigTx = await Mina.transaction(
         { sender: user2, fee },
         async () => {
-          await tokenContract.updateMintDynamicProofConfig(
-            mintDynamicProofConfig
+          await tokenContract.updateBurnDynamicProofConfig(
+            burnDynamicProofConfig
           );
         }
       );
-      await updateMintDynamicProofConfigTx.prove();
-      await updateMintDynamicProofConfigTx
+      await updateBurnDynamicProofConfigTx.prove();
+      await updateBurnDynamicProofConfigTx
         .sign([user2.key, tokenAdmin.key])
         .send()
         .wait();
@@ -542,7 +494,7 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(1),
+        Field(2),
         [user1.key],
         expectedErrorMessage
       );
@@ -554,7 +506,7 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(5),
+        Field(10),
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
@@ -562,7 +514,7 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should reject updating side-loaded vKey hash: non-compliant vKeyMap', async () => {
       let tamperedVKeyMap = vKeyMap.clone();
-      tamperedVKeyMap.insert(6n, Field.random());
+      tamperedVKeyMap.insert(11n, Field.random());
 
       const expectedErrorMessage =
         'Off-chain side-loaded vKey Merkle Map is out of sync!';
@@ -570,19 +522,19 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         programVkey,
         tamperedVKeyMap,
-        Field(1),
+        Field(2),
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
     });
 
-    it('should reject mint if vKeyHash was never updated', async () => {
+    it('should reject burn if vKeyHash was never updated', async () => {
       const expectedErrorMessage =
         'Verification key hash is missing for this operation. Please make sure to register it before verifying a side-loaded proof when `shouldVerify` is enabled in the config.';
 
-      await testMintSLTx(
+      await testBurnSLTx(
         user2,
-        UInt64.from(600),
+        UInt64.from(150),
         [user2.key],
         dummyProof,
         dummyVkey,
@@ -591,28 +543,28 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should update the side-loaded vKey hash for mints', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(1), [
+    it('should update the side-loaded vKey hash for burns', async () => {
+      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(2), [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(1), programVkey.hash);
+      vKeyMap.set(Field(2), programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
   });
 
   // SLV = Side-Loaded Verification (enabled)
-  describe('Mint Config: Unauthorized/Ranged/SLV Mint', () => {
-    it('should reject mint given a non-compliant vKeyMap', async () => {
+  describe('Burn Config: Unauthorized/Fixed/SLV Burn', () => {
+    it('should reject burn given a non-compliant vKeyMap', async () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
       const expectedErrorMessage =
         'Off-chain side-loaded vKey Merkle Map is out of sync!';
 
-      await testMintSLTx(
+      await testBurnSLTx(
         user2,
-        UInt64.from(600),
+        UInt64.from(150),
         [user2.key],
         dummyProof,
         dummyVkey,
@@ -621,12 +573,12 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given a non-compliant vKey hash', async () => {
+    it('should reject burn given a non-compliant vKey hash', async () => {
       const expectedErrorMessage = 'Invalid side-loaded verification key!';
 
-      await testMintSLTx(
+      await testBurnSLTx(
         user2,
-        UInt64.from(600),
+        UInt64.from(150),
         [user2.key],
         dummyProof,
         dummyVkey,
@@ -637,19 +589,19 @@ describe('New Token Standard Mint Tests', () => {
 
     //! only passes when `proofsEnabled=true`
     (!proofsEnabled ? test.skip : it)(
-      'should reject mint given an invalid proof',
+      'should reject burn given an invalid proof',
       async () => {
         await program2.compile();
-        const mintAmount = UInt64.from(600);
+        const burnAmount = UInt64.from(150);
         const invalidProof = await generateDynamicProof2(
           tokenContract.deriveTokenId(),
           user1
         );
 
         const expectedErrorMessage = 'Constraint unsatisfied (unreduced)';
-        await testMintSLTx(
+        await testBurnSLTx(
           user1,
-          mintAmount,
+          burnAmount,
           [user1.key],
           invalidProof,
           programVkey,
@@ -659,16 +611,16 @@ describe('New Token Standard Mint Tests', () => {
       }
     );
 
-    it('should mint given a valid proof', async () => {
+    it('should burn given a valid proof', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
       );
 
-      const mintAmount = UInt64.from(600);
-      await testMintSLTx(
+      const burnAmount = UInt64.from(150);
+      await testBurnSLTx(
         user2,
-        mintAmount,
+        burnAmount,
         [user2.key],
         dynamicProof,
         programVkey,
@@ -676,17 +628,17 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint for a non-compliant proof recipient', async () => {
+    it('should reject burn for a non-compliant proof recipient', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
       );
 
-      const mintAmount = UInt64.from(600);
+      const burnAmount = UInt64.from(150);
       const expectedErrorMessage = 'Recipient mismatch in side-loaded proof!';
-      await testMintSLTx(
+      await testBurnSLTx(
         user1,
-        mintAmount,
+        burnAmount,
         [user1.key],
         dynamicProof,
         programVkey,
@@ -695,14 +647,14 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireTokenIdMatch precondition', async () => {
+    it('should reject burn given an invalid proof requireTokenIdMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
 
-      const mintAmount = UInt64.from(600);
+      const burnAmount = UInt64.from(150);
       const expectedErrorMessage = 'Token ID mismatch between input and output';
-      await testMintSLTx(
+      await testBurnSLTx(
         user1,
-        mintAmount,
+        burnAmount,
         [user1.key],
         dynamicProof,
         programVkey,
@@ -711,7 +663,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireMinaBalanceMatch precondition', async () => {
+    it('should reject burn given an invalid proof requireMinaBalanceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user1
@@ -730,11 +682,11 @@ describe('New Token Standard Mint Tests', () => {
       sendMinaTx.prove();
       sendMinaTx.sign([user1.key]).send().wait();
 
-      const mintAmount = UInt64.from(600);
+      const burnAmount = UInt64.from(150);
       const expectedErrorMessage = 'Mismatch in MINA account balance.';
-      await testMintSLTx(
+      await testBurnSLTx(
         user1,
-        mintAmount,
+        burnAmount,
         [user1.key],
         dynamicProof,
         programVkey,
@@ -743,7 +695,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireCustomTokenBalanceMatch precondition', async () => {
+    it('should reject burn given an invalid proof requireCustomTokenBalanceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
@@ -756,7 +708,7 @@ describe('New Token Standard Mint Tests', () => {
         async () => {
           await tokenContract.burn(
             user2,
-            UInt64.from(100),
+            UInt64.from(150),
             dynamicProof,
             programVkey,
             vKeyMap
@@ -766,12 +718,12 @@ describe('New Token Standard Mint Tests', () => {
       await burnTx.prove();
       await burnTx.sign([user1.key, user2.key]).send().wait();
 
-      const mintAmount = UInt64.from(600);
+      const burnAmount = UInt64.from(150);
       const expectedErrorMessage =
         'Custom token balance inconsistency detected!';
-      await testMintSLTx(
+      await testBurnSLTx(
         user2,
-        mintAmount,
+        burnAmount,
         [user2.key],
         dynamicProof,
         programVkey,
@@ -780,7 +732,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireMinaNonceMatch precondition', async () => {
+    it('should reject burn given an invalid proof requireMinaNonceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user1
@@ -802,59 +754,11 @@ describe('New Token Standard Mint Tests', () => {
       await sendTx.prove();
       await sendTx.sign([user1.key, user2.key]).send().wait();
 
-      const mintAmount = UInt64.from(600);
+      const burnAmount = UInt64.from(150);
       const expectedErrorMessage = 'Mismatch in MINA account nonce!';
-      await testMintSLTx(
+      await testBurnSLTx(
         user1,
-        mintAmount,
-        [user1.key],
-        dynamicProof,
-        programVkey,
-        vKeyMap,
-        expectedErrorMessage
-      );
-    });
-
-    //! supposed to fail but didn't -> we might need to remove the token account nonce precondition
-    it.skip('should reject mint given an invalid proof requireCustomTokenNonceMatch precondition', async () => {
-      const dynamicProof = await generateDynamicProof(
-        tokenContract.deriveTokenId(),
-        user2
-      );
-
-      // user1 pays for tx fees to not get a "mina account balance mismatch" error
-      // user2 transfer custom tokens to user1 to increase the nonce of his token account
-      // user1 transfer custom tokens to user2 to conserve the the total token balance of user2
-      const transfersTx = await Mina.transaction(
-        { sender: user1, fee },
-        async () => {
-          await tokenContract.transferCustom(
-            user1,
-            user2,
-            UInt64.from(100),
-            dummyProof,
-            dummyVkey,
-            vKeyMap
-          );
-          await tokenContract.transferCustom(
-            user2,
-            user1,
-            UInt64.from(100),
-            dummyProof,
-            dummyVkey,
-            vKeyMap
-          );
-        }
-      );
-
-      await transfersTx.prove();
-      transfersTx.sign([user1.key, user2.key]).send().wait();
-
-      const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = 'Mismatch in MINA account nonce!';
-      await testMintSLTx(
-        user1,
-        mintAmount,
+        burnAmount,
         [user1.key],
         dynamicProof,
         programVkey,
