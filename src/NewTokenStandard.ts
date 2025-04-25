@@ -388,7 +388,7 @@ class FungibleToken extends TokenContract {
   }
 
   async approveBase(forest: AccountUpdateForest): Promise<void> {
-    throw new Error('Use the approveUpdates method instead');
+    throw new Error('Use the approveBaseCustom method instead');
   }
 
   /** Approve `AccountUpdate`s that have been created outside of the token contract.
@@ -396,7 +396,7 @@ class FungibleToken extends TokenContract {
    * @argument {AccountUpdateForest} updates - The `AccountUpdate`s to approve. Note that the forest size is limited by the base token contract, @see TokenContract.MAX_ACCOUNT_UPDATES The current limit is 9.
    */
   @method
-  async approveUpdates(
+  async approveBaseCustom(
     updates: AccountUpdateForest,
     proof: SideloadedProof,
     vk: VerificationKey,
