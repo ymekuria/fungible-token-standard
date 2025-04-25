@@ -19,6 +19,7 @@ import {
   UInt8,
   VerificationKey,
   Experimental,
+  AccountUpdateTree,
 } from 'o1js';
 import {
   MintConfig,
@@ -391,6 +392,18 @@ class FungibleToken extends TokenContract {
     throw new Error('Use the approveBaseCustom method instead');
   }
 
+  override async approveAccountUpdate(
+    accountUpdate: AccountUpdate | AccountUpdateTree
+  ) {
+    throw new Error('Use the approveAccountUpdateCustom method instead');
+  }
+
+  override async approveAccountUpdates(
+    accountUpdates: (AccountUpdate | AccountUpdateTree)[]
+  ) {
+    throw new Error('Use the approveAccountUpdatesCustom method instead');
+  }
+
   /** Approve `AccountUpdate`s that have been created outside of the token contract.
    *
    * @argument {AccountUpdateForest} updates - The `AccountUpdate`s to approve. Note that the forest size is limited by the base token contract, @see TokenContract.MAX_ACCOUNT_UPDATES The current limit is 9.
@@ -446,6 +459,26 @@ class FungibleToken extends TokenContract {
       vKeyMap,
       Field(4)
     );
+  }
+
+  async approveAccountUpdateCustom(
+    accountUpdate: AccountUpdate | AccountUpdateTree,
+    proof: SideloadedProof,
+    vk: VerificationKey,
+    vKeyMap: VKeyMerkleMap
+  ) {
+    let forest = toForest([accountUpdate]);
+    await this.approveBaseCustom(forest, proof, vk, vKeyMap);
+  }
+
+  async approveAccountUpdatesCustom(
+    accountUpdates: (AccountUpdate | AccountUpdateTree)[],
+    proof: SideloadedProof,
+    vk: VerificationKey,
+    vKeyMap: VKeyMerkleMap
+  ) {
+    let forest = toForest(accountUpdates);
+    await this.approveBaseCustom(forest, proof, vk, vKeyMap);
   }
 
   @method.returns(UInt64)
@@ -772,3 +805,13 @@ class BalanceChangeEvent extends Struct({
   address: PublicKey,
   amount: Int64,
 }) {}
+
+// copied from: https://github.com/o1-labs/o1js/blob/6ebbc23710f6de023fea6d83dc93c5a914c571f2/src/lib/mina/token/token-contract.ts#L189
+function toForest(
+  updates: (AccountUpdate | AccountUpdateTree)[]
+): AccountUpdateForest {
+  let trees = updates.map((a) =>
+    a instanceof AccountUpdate ? a.extractTree() : a
+  );
+  return AccountUpdateForest.fromReverse(trees);
+}
