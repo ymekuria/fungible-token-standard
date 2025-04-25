@@ -31,7 +31,7 @@ import {
 
 const proofsEnabled = false;
 
-describe('New Token Standard Burn Tests', () => {
+describe('New Token Standard Transfer Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
 
   let fee: number,
@@ -44,7 +44,8 @@ describe('New Token Standard Burn Tests', () => {
     programVkey: VerificationKey,
     deployer: Mina.TestPublicKey,
     user1: Mina.TestPublicKey,
-    user2: Mina.TestPublicKey;
+    user2: Mina.TestPublicKey,
+    user3: Mina.TestPublicKey;
 
   beforeAll(async () => {
     if (proofsEnabled) {
@@ -60,7 +61,7 @@ describe('New Token Standard Burn Tests', () => {
 
     [tokenAdmin, tokenA] = Mina.TestPublicKey.random(7);
 
-    [deployer, user1, user2] = localChain.testAccounts;
+    [deployer, user1, user2, user3] = localChain.testAccounts;
     tokenContract = new FungibleToken(tokenA);
 
     mintParams = new MintParams({
@@ -85,20 +86,23 @@ describe('New Token Standard Burn Tests', () => {
     fee = 1e8;
   });
 
-  async function testBurnTx(
-    user: PublicKey,
-    burnAmount: UInt64,
+  async function testTransferTx(
+    sender: PublicKey,
+    receiver: PublicKey,
+    transferAmount: UInt64,
     signers: PrivateKey[],
     expectedErrorMessage?: string,
-    numberOfAccounts = 2
+    numberOfAccounts = 1
   ) {
     try {
-      const userBalanceBefore = await tokenContract.getBalanceOf(user);
-      const tx = await Mina.transaction({ sender: user, fee }, async () => {
-        AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.burn(
-          user,
-          burnAmount,
+      const senderBalanceBefore = await tokenContract.getBalanceOf(sender);
+      const receiverBalanceBefore = await tokenContract.getBalanceOf(receiver);
+      const tx = await Mina.transaction({ sender, fee }, async () => {
+        AccountUpdate.fundNewAccount(sender, numberOfAccounts);
+        await tokenContract.transferCustom(
+          sender,
+          receiver,
+          transferAmount,
           dummyProof,
           dummyVkey,
           vKeyMap
@@ -107,60 +111,14 @@ describe('New Token Standard Burn Tests', () => {
       await tx.prove();
       await tx.sign(signers).send().wait();
 
-      const userBalanceAfter = await tokenContract.getBalanceOf(user);
-      expect(userBalanceAfter).toEqual(userBalanceBefore.sub(burnAmount));
-
-      if (expectedErrorMessage)
-        throw new Error('Test should have failed but didnt!');
-    } catch (error: unknown) {
-      expect((error as Error).message).toContain(expectedErrorMessage);
-    }
-  }
-
-  async function updateBurnConfigTx(
-    user: PublicKey,
-    burnConfig: BurnConfig,
-    signers: PrivateKey[],
-    expectedErrorMessage?: string
-  ) {
-    try {
-      const updateBurnConfigTx = await Mina.transaction(
-        { sender: user, fee },
-        async () => {
-          await tokenContract.updateBurnConfig(burnConfig);
-        }
+      const senderBalanceAfter = await tokenContract.getBalanceOf(sender);
+      const receiverBalanceAfter = await tokenContract.getBalanceOf(receiver);
+      expect(senderBalanceAfter).toEqual(
+        senderBalanceBefore.sub(transferAmount)
       );
-      await updateBurnConfigTx.prove();
-      await updateBurnConfigTx.sign(signers).send().wait();
-
-      expect(
-        BurnConfig.unpack(tokenContract.packedAmountConfigs.get())
-      ).toEqual(burnConfig);
-
-      if (expectedErrorMessage)
-        throw new Error('Test should have failed but didnt!');
-    } catch (error: unknown) {
-      expect((error as Error).message).toContain(expectedErrorMessage);
-    }
-  }
-
-  async function updateBurnParamsTx(
-    user: PublicKey,
-    burnParams: BurnParams,
-    signers: PrivateKey[],
-    expectedErrorMessage?: string
-  ) {
-    try {
-      const updateBurnParamsTx = await Mina.transaction(
-        { sender: user, fee },
-        async () => {
-          await tokenContract.updateBurnParams(burnParams);
-        }
+      expect(receiverBalanceAfter).toEqual(
+        receiverBalanceBefore.add(transferAmount)
       );
-      await updateBurnParamsTx.prove();
-      await updateBurnParamsTx.sign(signers).send().wait();
-
-      expect(tokenContract.packedBurnParams.get()).toEqual(burnParams.pack());
 
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
@@ -195,9 +153,10 @@ describe('New Token Standard Burn Tests', () => {
     }
   }
 
-  async function testBurnSLTx(
-    user: PublicKey,
-    burnAmount: UInt64,
+  async function testTransferSLTx(
+    sender: PublicKey,
+    receiver: PublicKey,
+    transferAmount: UInt64,
     signers: PrivateKey[],
     proof?: SideloadedProof,
     vKey?: VerificationKey,
@@ -205,11 +164,13 @@ describe('New Token Standard Burn Tests', () => {
     expectedErrorMessage?: string
   ) {
     try {
-      const userBalanceBefore = await tokenContract.getBalanceOf(user);
-      const tx = await Mina.transaction({ sender: user, fee }, async () => {
-        await tokenContract.burn(
-          user,
-          burnAmount,
+      const senderBalanceBefore = await tokenContract.getBalanceOf(sender);
+      const receiverBalanceBefore = await tokenContract.getBalanceOf(receiver);
+      const tx = await Mina.transaction({ sender: sender, fee }, async () => {
+        await tokenContract.transferCustom(
+          sender,
+          receiver,
+          transferAmount,
           proof ?? dummyProof,
           vKey ?? dummyVkey,
           vKeyMerkleMap ?? vKeyMap
@@ -218,8 +179,14 @@ describe('New Token Standard Burn Tests', () => {
       await tx.prove();
       await tx.sign(signers).send().wait();
 
-      const userBalanceAfter = await tokenContract.getBalanceOf(user);
-      expect(userBalanceAfter).toEqual(userBalanceBefore.sub(burnAmount));
+      const senderBalanceAfter = await tokenContract.getBalanceOf(sender);
+      const receiverBalanceAfter = await tokenContract.getBalanceOf(receiver);
+      expect(senderBalanceAfter).toEqual(
+        senderBalanceBefore.sub(transferAmount)
+      );
+      expect(receiverBalanceAfter).toEqual(
+        receiverBalanceBefore.add(transferAmount)
+      );
 
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
@@ -290,175 +257,72 @@ describe('New Token Standard Burn Tests', () => {
     });
   });
 
-  describe('Burn Config: Default: Unauthorized/Ranged', () => {
-    it('should allow burning without authorization', async () => {
-      await testBurnTx(user2, UInt64.from(100), [user2.key], undefined, 0);
+  // SLV = Side-Loaded Verification
+  describe('Transfer: SLV disabled', () => {
+    it('should do a transfer from user2 to user3', async () => {
+      const transferAmount = UInt64.from(100);
+      await testTransferTx(user2, user3, transferAmount, [user2.key]);
     });
 
-    it('should burn an amount within the valid range: user', async () => {
-      await testBurnTx(user1, UInt64.from(50), [user1.key], undefined, 0);
-    });
-
-    it('should reject burning an amount outside the valid range', async () => {
-      await testBurnTx(
-        user1,
-        UInt64.from(700),
-        [user1.key],
-        'Not allowed to burn tokens'
-      );
-    });
-  });
-
-  describe('Update Burn Config: Unauthorized/Fixed', () => {
-    it('should reject burnConfig update when both range and fixed burn are enabled', async () => {
-      const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(true),
-      });
-
+    it('should reject a transaction not signed by the token holder', async () => {
+      const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
-      await updateBurnConfigTx(
+        'Check signature: Invalid signature on fee payer for key';
+      await testTransferTx(
         user1,
-        burnConfig,
-        [user1.key, tokenAdmin.key],
+        user3,
+        transferAmount,
+        [user3.key],
         expectedErrorMessage
       );
     });
 
-    //! should test authorized burns
-    it('should reject burnConfig update when unauthorized by the admin', async () => {
-      const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
-      });
-
+    it("Should prevent transfers from account that's tracking circulation", async () => {
+      const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
-      await updateBurnConfigTx(
-        user2,
-        burnConfig,
-        [user2.key],
+        "Can't transfer to/from the circulation account";
+      await testTransferTx(
+        tokenA,
+        user3,
+        transferAmount,
+        [user3.key],
         expectedErrorMessage
       );
     });
 
-    it('should update packed burnConfig', async () => {
-      const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
-      });
-
-      await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
-    });
-  });
-
-  describe('Update Burn Params', () => {
-    it('should reject burnParams update given an invalid range', async () => {
-      burnParams = new BurnParams({
-        fixedAmount: UInt64.from(300),
-        minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(50),
-      });
-
-      const expectedErrorMessage = 'Invalid amount range!';
-      await updateBurnParamsTx(
-        user2,
-        burnParams,
-        [user2.key, tokenAdmin.key],
-        expectedErrorMessage
-      );
-    });
-
-    it('should reject burnParams update when unauthorized by the admin', async () => {
-      burnParams = new BurnParams({
-        fixedAmount: UInt64.from(150),
-        minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(850),
-      });
-
+    it("Should prevent transfers to account that's tracking circulation", async () => {
+      const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
-      await updateBurnParamsTx(
+        "Can't transfer to/from the circulation account";
+      await testTransferTx(
         user1,
-        burnParams,
-        [user1.key],
+        tokenA,
+        transferAmount,
+        [user3.key],
         expectedErrorMessage
       );
     });
-
-    it('should update packed burnParams', async () => {
-      await updateBurnParamsTx(user1, burnParams, [user1.key, tokenAdmin.key]);
-    });
   });
 
-  // burn fixed amount is set to 150
-  describe('Burn Config: Unauthorized/Fixed', () => {
-    it('should reject burning an amount different from the fixed value', async () => {
-      await testBurnTx(
-        user1,
-        UInt64.from(50),
-        [user1.key],
-        'Not allowed to burn tokens',
-        0
-      );
-    });
-
-    it('should only burn an amount equal to the fixed value', async () => {
-      await testBurnTx(user2, UInt64.from(150), [user2.key], undefined, 0);
-    });
-  });
-
-  describe('Burn Config: Authorized/Fixed', () => {
-    it('update burn config to enforce admin authorization', async () => {
-      const burnConfig = new BurnConfig({
-        unauthorized: Bool(false),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
-      });
-
-      await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
-    });
-
-    it('should reject unauthorized burning', async () => {
-      await testBurnTx(
-        user1,
-        UInt64.from(150),
-        [user1.key],
-        'the required authorization was not provided or is invalid.'
-      );
-    });
-
-    it('update burn config again to disable admin authorization', async () => {
-      const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
-      });
-
-      await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
-    });
-  });
-
-  describe('Update Burn Dynamic Proof Config', () => {
-    it('should reject burnDynamicProofConfig update when unauthorized by the admin', async () => {
+  describe('Update Transfer Dynamic Proof Config', () => {
+    it('should reject transferDynamicProofConfig update when unauthorized by the admin', async () => {
       try {
-        let burnDynamicProofConfig = BurnDynamicProofConfig.default;
-        burnDynamicProofConfig.shouldVerify = Bool(true);
+        let transferDynamicProofConfig = TransferDynamicProofConfig.default;
+        transferDynamicProofConfig.shouldVerify = Bool(true);
 
-        const updateBurnDynamicProofConfigTx = await Mina.transaction(
+        const updateTransferDynamicProofConfigTx = await Mina.transaction(
           { sender: user2, fee },
           async () => {
-            await tokenContract.updateBurnDynamicProofConfig(
-              burnDynamicProofConfig
+            await tokenContract.updateTransferDynamicProofConfig(
+              transferDynamicProofConfig
             );
           }
         );
-        await updateBurnDynamicProofConfigTx.prove();
-        await updateBurnDynamicProofConfigTx.sign([user2.key]).send().wait();
+        await updateTransferDynamicProofConfigTx.prove();
+        await updateTransferDynamicProofConfigTx
+          .sign([user2.key])
+          .send()
+          .wait();
       } catch (error: unknown) {
         const expectedErrorMessage =
           'the required authorization was not provided or is invalid';
@@ -466,20 +330,20 @@ describe('New Token Standard Burn Tests', () => {
       }
     });
 
-    it('update burn dynamic proof config: enable side-loaded verification', async () => {
-      let burnDynamicProofConfig = BurnDynamicProofConfig.default;
-      burnDynamicProofConfig.shouldVerify = Bool(true);
+    it('update transfer dynamic proof config: enable side-loaded verification', async () => {
+      let transferDynamicProofConfig = TransferDynamicProofConfig.default;
+      transferDynamicProofConfig.shouldVerify = Bool(true);
 
-      const updateBurnDynamicProofConfigTx = await Mina.transaction(
+      const updateTransferDynamicProofConfigTx = await Mina.transaction(
         { sender: user2, fee },
         async () => {
-          await tokenContract.updateBurnDynamicProofConfig(
-            burnDynamicProofConfig
+          await tokenContract.updateTransferDynamicProofConfig(
+            transferDynamicProofConfig
           );
         }
       );
-      await updateBurnDynamicProofConfigTx.prove();
-      await updateBurnDynamicProofConfigTx
+      await updateTransferDynamicProofConfigTx.prove();
+      await updateTransferDynamicProofConfigTx
         .sign([user2.key, tokenAdmin.key])
         .send()
         .wait();
@@ -494,7 +358,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(2),
+        Field(3),
         [user1.key],
         expectedErrorMessage
       );
@@ -506,7 +370,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(10),
+        Field(13),
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
@@ -514,7 +378,7 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should reject updating side-loaded vKey hash: non-compliant vKeyMap', async () => {
       let tamperedVKeyMap = vKeyMap.clone();
-      tamperedVKeyMap.insert(11n, Field.random());
+      tamperedVKeyMap.insert(13n, Field.random());
 
       const expectedErrorMessage =
         'Off-chain side-loaded vKey Merkle Map is out of sync!';
@@ -522,18 +386,19 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         programVkey,
         tamperedVKeyMap,
-        Field(2),
+        Field(3),
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
     });
 
-    it('should reject burn if vKeyHash was never updated', async () => {
+    it('should reject transfer if vKeyHash was never updated', async () => {
       const expectedErrorMessage =
         'Verification key hash is missing for this operation. Please make sure to register it before verifying a side-loaded proof when `shouldVerify` is enabled in the config.';
 
-      await testBurnSLTx(
+      await testTransferSLTx(
         user2,
+        user3,
         UInt64.from(150),
         [user2.key],
         dummyProof,
@@ -543,28 +408,28 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should update the side-loaded vKey hash for burns', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(2), [
+    it('should update the side-loaded vKey hash for transfers', async () => {
+      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(3), [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(2), programVkey.hash);
+      vKeyMap.set(Field(3), programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
   });
 
-  // SLV = Side-Loaded Verification (enabled)
-  describe('Burn Config: Unauthorized/Fixed/SLV Burn', () => {
-    it('should reject burn given a non-compliant vKeyMap', async () => {
+  describe('Transfer: SLV enabled', () => {
+    it('should reject transfer given a non-compliant vKeyMap', async () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
       const expectedErrorMessage =
         'Off-chain side-loaded vKey Merkle Map is out of sync!';
 
-      await testBurnSLTx(
+      await testTransferSLTx(
         user2,
-        UInt64.from(150),
+        user3,
+        UInt64.from(50),
         [user2.key],
         dummyProof,
         dummyVkey,
@@ -573,11 +438,12 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should reject burn given a non-compliant vKey hash', async () => {
+    it('should reject transfer given a non-compliant vKey hash', async () => {
       const expectedErrorMessage = 'Invalid side-loaded verification key!';
 
-      await testBurnSLTx(
+      await testTransferSLTx(
         user2,
+        user1,
         UInt64.from(150),
         [user2.key],
         dummyProof,
@@ -589,19 +455,20 @@ describe('New Token Standard Burn Tests', () => {
 
     //! only passes when `proofsEnabled=true`
     (!proofsEnabled ? test.skip : it)(
-      'should reject burn given an invalid proof',
+      'should reject transfer given an invalid proof',
       async () => {
         await program2.compile();
-        const burnAmount = UInt64.from(150);
+        const transferAmount = UInt64.from(150);
         const invalidProof = await generateDynamicProof2(
           tokenContract.deriveTokenId(),
           user1
         );
 
         const expectedErrorMessage = 'Constraint unsatisfied (unreduced)';
-        await testBurnSLTx(
+        await testTransferSLTx(
           user1,
-          burnAmount,
+          deployer,
+          transferAmount,
           [user1.key],
           invalidProof,
           programVkey,
@@ -611,16 +478,17 @@ describe('New Token Standard Burn Tests', () => {
       }
     );
 
-    it('should burn given a valid proof', async () => {
+    it('should transfer given a valid proof', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
       );
 
-      const burnAmount = UInt64.from(150);
-      await testBurnSLTx(
+      const transferAmount = UInt64.from(150);
+      await testTransferSLTx(
         user2,
-        burnAmount,
+        user1,
+        transferAmount,
         [user2.key],
         dynamicProof,
         programVkey,
@@ -628,17 +496,18 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should reject burn for a non-compliant proof recipient', async () => {
+    it('should reject transfer for a non-compliant proof recipient', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
       );
 
-      const burnAmount = UInt64.from(150);
+      const transferAmount = UInt64.from(150);
       const expectedErrorMessage = 'Recipient mismatch in side-loaded proof!';
-      await testBurnSLTx(
+      await testTransferSLTx(
         user1,
-        burnAmount,
+        user3,
+        transferAmount,
         [user1.key],
         dynamicProof,
         programVkey,
@@ -647,14 +516,15 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should reject burn given an invalid proof requireTokenIdMatch precondition', async () => {
+    it('should reject transfer given an invalid proof requireTokenIdMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
 
-      const burnAmount = UInt64.from(150);
+      const transferAmount = UInt64.from(150);
       const expectedErrorMessage = 'Token ID mismatch between input and output';
-      await testBurnSLTx(
+      await testTransferSLTx(
         user1,
-        burnAmount,
+        user3,
+        transferAmount,
         [user1.key],
         dynamicProof,
         programVkey,
@@ -663,7 +533,7 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should reject burn given an invalid proof requireMinaBalanceMatch precondition', async () => {
+    it('should reject transfer given an invalid proof requireMinaBalanceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user1
@@ -682,11 +552,12 @@ describe('New Token Standard Burn Tests', () => {
       sendMinaTx.prove();
       sendMinaTx.sign([user1.key]).send().wait();
 
-      const burnAmount = UInt64.from(150);
+      const transferAmount = UInt64.from(150);
       const expectedErrorMessage = 'Mismatch in MINA account balance.';
-      await testBurnSLTx(
+      await testTransferSLTx(
         user1,
-        burnAmount,
+        user3,
+        transferAmount,
         [user1.key],
         dynamicProof,
         programVkey,
@@ -695,7 +566,7 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should reject burn given an invalid proof requireCustomTokenBalanceMatch precondition', async () => {
+    it('should reject transfer given an invalid proof requireCustomTokenBalanceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
@@ -718,12 +589,13 @@ describe('New Token Standard Burn Tests', () => {
       await burnTx.prove();
       await burnTx.sign([user1.key, user2.key]).send().wait();
 
-      const burnAmount = UInt64.from(150);
+      const transferAmount = UInt64.from(150);
       const expectedErrorMessage =
         'Custom token balance inconsistency detected!';
-      await testBurnSLTx(
+      await testTransferSLTx(
         user2,
-        burnAmount,
+        user3,
+        transferAmount,
         [user2.key],
         dynamicProof,
         programVkey,
@@ -732,7 +604,7 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
-    it('should reject burn given an invalid proof requireMinaNonceMatch precondition', async () => {
+    it('should reject transfer given an invalid proof requireMinaNonceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user1
@@ -754,11 +626,12 @@ describe('New Token Standard Burn Tests', () => {
       await sendTx.prove();
       await sendTx.sign([user1.key, user2.key]).send().wait();
 
-      const burnAmount = UInt64.from(150);
+      const transferAmount = UInt64.from(150);
       const expectedErrorMessage = 'Mismatch in MINA account nonce!';
-      await testBurnSLTx(
+      await testTransferSLTx(
         user1,
-        burnAmount,
+        user3,
+        transferAmount,
         [user1.key],
         dynamicProof,
         programVkey,
