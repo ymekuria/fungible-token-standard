@@ -454,7 +454,7 @@ class FungibleToken extends TokenContract {
     await this.verifySideLoadedProof(
       proof,
       vk,
-      PublicKey.empty(),
+      this.sender.getAndRequireSignature(),
       updatesDynamicProofConfig,
       vKeyMap,
       Field(4)
@@ -666,6 +666,7 @@ class FungibleToken extends TokenContract {
   ) {
     const {
       shouldVerify,
+      requireRecipientMatch,
       requireTokenIdMatch,
       requireMinaBalanceMatch,
       requireCustomTokenBalanceMatch,
@@ -708,7 +709,7 @@ class FungibleToken extends TokenContract {
     // Check that the address in the proof corresponds to the recipient passed by the provable method.
     const isRecipientValid = Provable.if(
       shouldVerify,
-      address.equals(recipient),
+      address.equals(recipient).or(requireRecipientMatch.not()),
       Bool(true)
     );
     isRecipientValid.assertTrue('Recipient mismatch in side-loaded proof!');

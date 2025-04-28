@@ -289,6 +289,7 @@ class BurnParams extends AmountParams {}
  * This class serves as a base for `mint`, `burn`, `transfer`, and `updates` dynamic proof configurations, each represented by exactly 6 bits within a packed 24-bit Field.
  *
  * @property shouldVerify - Enables or disables verification of side-loaded proofs.
+ * @property requireRecipientMatch - Ensures that the recipient address in the proof's public input matches the recipient specified in the token method call.
  * @property requireTokenIdMatch - Ensures token ID consistency between proof generation and verification.
  * @property requireMinaBalanceMatch - Ensures MINA balance consistency between proof generation and verification.
  * @property requireCustomTokenBalanceMatch - Ensures custom token balance consistency between proof generation and verification.
@@ -297,6 +298,7 @@ class BurnParams extends AmountParams {}
  */
 class DynamicProofConfig extends Struct({
   shouldVerify: Bool,
+  requireRecipientMatch: Bool,
   requireTokenIdMatch: Bool,
   requireMinaBalanceMatch: Bool,
   requireCustomTokenBalanceMatch: Bool,
@@ -310,6 +312,7 @@ class DynamicProofConfig extends Struct({
   toBits(): Bool[] {
     return [
       this.shouldVerify,
+      this.requireRecipientMatch,
       this.requireTokenIdMatch,
       this.requireMinaBalanceMatch,
       this.requireCustomTokenBalanceMatch,
@@ -325,16 +328,17 @@ class DynamicProofConfig extends Struct({
    * @returns A DynamicProofConfig instance.
    */
   static unpack(packedConfigs: Field, configIndex: number) {
-    const start = configIndex * 6;
-    const bits = packedConfigs.toBits(24).slice(start, start + 6);
+    const start = configIndex * 7;
+    const bits = packedConfigs.toBits(28).slice(start, start + 7);
 
     return new this({
       shouldVerify: bits[0],
-      requireTokenIdMatch: bits[1],
-      requireMinaBalanceMatch: bits[2],
-      requireCustomTokenBalanceMatch: bits[3],
-      requireMinaNonceMatch: bits[4],
-      requireCustomTokenNonceMatch: bits[5],
+      requireRecipientMatch: bits[1],
+      requireTokenIdMatch: bits[2],
+      requireMinaBalanceMatch: bits[3],
+      requireCustomTokenBalanceMatch: bits[4],
+      requireMinaNonceMatch: bits[5],
+      requireCustomTokenNonceMatch: bits[6],
     });
   }
 
@@ -345,12 +349,12 @@ class DynamicProofConfig extends Struct({
    * @returns Updated 24-bit packed Field.
    */
   updatePackedConfigs(packedConfigs: Field, configIndex: number): Field {
-    const bits = packedConfigs.toBits(24);
-    const start = configIndex * 6;
+    const bits = packedConfigs.toBits(28);
+    const start = configIndex * 7;
     const updatedBits = [
       ...bits.slice(0, start),
       ...this.toBits(),
-      ...bits.slice(start + 6),
+      ...bits.slice(start + 7),
     ];
 
     return Field.fromBits(updatedBits);
@@ -390,6 +394,7 @@ class MintDynamicProofConfig extends DynamicProofConfig {
    */
   static default = new this({
     shouldVerify: Bool(false),
+    requireRecipientMatch: Bool(true),
     requireTokenIdMatch: Bool(true),
     requireMinaBalanceMatch: Bool(true),
     requireCustomTokenBalanceMatch: Bool(true),
@@ -427,6 +432,7 @@ class BurnDynamicProofConfig extends DynamicProofConfig {
    */
   static default = new this({
     shouldVerify: Bool(false),
+    requireRecipientMatch: Bool(true),
     requireTokenIdMatch: Bool(true),
     requireMinaBalanceMatch: Bool(true),
     requireCustomTokenBalanceMatch: Bool(true),
@@ -464,6 +470,7 @@ class TransferDynamicProofConfig extends DynamicProofConfig {
    */
   static default = new this({
     shouldVerify: Bool(false),
+    requireRecipientMatch: Bool(true),
     requireTokenIdMatch: Bool(true),
     requireMinaBalanceMatch: Bool(true),
     requireCustomTokenBalanceMatch: Bool(true),
@@ -501,9 +508,10 @@ class UpdatesDynamicProofConfig extends DynamicProofConfig {
    */
   static default = new this({
     shouldVerify: Bool(false),
-    requireTokenIdMatch: Bool(true),
-    requireMinaBalanceMatch: Bool(true),
-    requireCustomTokenBalanceMatch: Bool(true),
+    requireRecipientMatch: Bool(false),
+    requireTokenIdMatch: Bool(false),
+    requireMinaBalanceMatch: Bool(false),
+    requireCustomTokenBalanceMatch: Bool(false),
     requireMinaNonceMatch: Bool(false),
     requireCustomTokenNonceMatch: Bool(false),
   });

@@ -227,6 +227,7 @@ equal(alexaBalanceAfterMint2, 500n);
 //                         ::IGNORE::{requireMinaBalanceMatch, requireCustomTokenBalanceMatch, requireMinaNonceMatch} --------------------------------
 const flexibleDynamicProofConfig = new MintDynamicProofConfig({
   shouldVerify: Bool(true),
+  requireRecipientMatch: Bool(true),
   requireTokenIdMatch: Bool(true),
   requireMinaBalanceMatch: Bool(false),
   requireCustomTokenBalanceMatch: Bool(false),
