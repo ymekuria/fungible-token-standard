@@ -386,6 +386,7 @@ class MintDynamicProofConfig extends DynamicProofConfig {
    *
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
+   * - Recipient matching is enforced.
    * - Token ID matching is enforced.
    * - MINA balance matching is enforced.
    * - Custom token balance matching is enforced.
@@ -424,6 +425,7 @@ class BurnDynamicProofConfig extends DynamicProofConfig {
    *
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
+   * - Recipient matching is enforced.
    * - Token ID matching is enforced.
    * - MINA balance matching is enforced.
    * - Custom token balance matching is enforced.
@@ -462,6 +464,7 @@ class TransferDynamicProofConfig extends DynamicProofConfig {
    *
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
+   * - Recipient matching is enforced.
    * - Token ID matching is enforced.
    * - MINA balance matching is enforced.
    * - Custom token balance matching is enforced.
@@ -500,9 +503,10 @@ class UpdatesDynamicProofConfig extends DynamicProofConfig {
    *
    * By default:
    * - Side-loaded proof verification (shouldVerify) is disabled.
-   * - Token ID matching is enforced.
-   * - MINA balance matching is enforced.
-   * - Custom token balance matching is enforced.
+   * - Recipient matching is not enforced.
+   * - Token ID matching is not enforced.
+   * - MINA balance matching is not enforced.
+   * - Custom token balance matching is not enforced.
    * - MINA nonce matching is not enforced.
    * - Custom token nonce matching is not enforced.
    */
