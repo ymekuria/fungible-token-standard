@@ -636,7 +636,7 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     //! only passes when `proofsEnabled=true`
-    (!proofsEnabled ? test.skip : it)(
+    (!proofsEnabled ? it.skip : it)(
       'should reject mint given an invalid proof',
       async () => {
         await program2.compile();

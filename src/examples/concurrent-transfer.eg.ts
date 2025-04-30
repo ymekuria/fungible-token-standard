@@ -9,7 +9,7 @@ import {
 } from 'o1js';
 import { FungibleToken, FungibleTokenAdmin } from '../index.js';
 
-const url = 'https://proxy.devnet.minaexplorer.com/graphql';
+const url = 'https://api.minascan.io/node/devnet/v1/graphql';
 const fee = 1e8;
 
 type KeyPair = { publicKey: PublicKey; privateKey: PrivateKey };

@@ -454,7 +454,7 @@ class FungibleToken extends TokenContract {
     await this.verifySideLoadedProof(
       proof,
       vk,
-      this.sender.getAndRequireSignature(),
+      PublicKey.empty(),
       updatesDynamicProofConfig,
       vKeyMap,
       Field(4)
