@@ -63,6 +63,7 @@ export class TokenEscrow extends SmartContract {
     vk: VerificationKey,
     vKeyMap: VKeyMerkleMap
   ) {
+    proof.verifyIf(vk, Bool(false));
     const token = new FungibleToken(this.tokenAddress.getAndRequireEquals());
     token.deriveTokenId().assertEquals(this.tokenId);
 
@@ -143,6 +144,10 @@ const escrowContract = new TokenEscrow(
   escrowContractKeyPair.publicKey,
   tokenId
 );
+
+console.log('Compiling contracts...');
+await FungibleToken.compile();
+await TokenEscrow.compile();
 
 const vKeyMap = new VKeyMerkleMap();
 const dummyVkey = await VerificationKey.dummy();
