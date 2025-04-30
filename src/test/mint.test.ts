@@ -381,6 +381,29 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
+    it('should reject minting to the circulating supply account', async () => {
+      const expectedErrorMessage =
+        "Can't transfer to/from the circulation account";
+      try {
+        const tx = await Mina.transaction({ sender: user2, fee }, async () => {
+          AccountUpdate.fundNewAccount(user2, 2);
+          await tokenContract.mint(
+            tokenContract.address,
+            UInt64.from(200),
+            dummyProof,
+            dummyVkey,
+            vKeyMap
+          );
+        });
+        await tx.prove();
+        await tx.sign([user2.key, tokenAdmin.key]).send().wait();
+
+        throw new Error('Test should have failed but didnt!');
+      } catch (error: unknown) {
+        expect((error as Error).message).toContain(expectedErrorMessage);
+      }
+    });
+
     it('should reject unauthorized minting', async () => {
       await testMintTx(
         user1,
