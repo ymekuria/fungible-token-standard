@@ -28,7 +28,7 @@ class MyFavoriteZkApp extends SmartContract {
     await super.deploy(args);
 
     // Initialize contract state
-    this.protectedValue.set(Field(113));
+    this.protectedValue.set(Field(333));
     this.contractOwner.set(args.owner);
 
     // Set default permissions

@@ -1,3 +1,4 @@
+import { equal } from 'node:assert';
 import {
   Field,
   Mina,
@@ -47,20 +48,20 @@ const counterVerificationKey = (await CounterProgram.compile()).verificationKey;
 const verifierContractKey = (await MyFavoriteZkApp.compile()).verificationKey;
 
 // Log verification key hashes for reference
-console.log('ECDSA verification key hash:', ecdsaVerificationKey.hash);
-console.log('Keccak verification key hash:', keccakVerificationKey.hash);
-console.log('Counter verification key hash:', counterVerificationKey.hash);
-console.log('MyFavoriteZkApp verification key hash:', verifierContractKey.hash);
+console.log('ECDSA verification key hash:', ecdsaVerificationKey.hash.toBigInt());
+console.log('Keccak verification key hash:', keccakVerificationKey.hash.toBigInt());
+console.log('Counter verification key hash:', counterVerificationKey.hash.toBigInt());
+console.log('MyFavoriteZkApp verification key hash:', verifierContractKey.hash.toBigInt());
 
 // Log addresses for reference
-console.log('Deployer Address:', deployer);
+console.log('Deployer Address:', deployer.toBase58());
 console.log('Deployer Address as Field:', deployer.toFields()[0].toBigInt());
-console.log('MyFavoriteZkApp Address:', zkAppPrivateKey.key.toPublicKey());
+console.log('MyFavoriteZkApp Address:', zkAppPrivateKey.key.toPublicKey().toBase58());
 console.log(
   'MyFavoriteZkApp Address as Field:',
   zkAppPrivateKey.key.toPublicKey().toFields()[0].toBigInt()
 );
-console.log('Alice Address:', alice);
+console.log('Alice Address:', alice.toBase58());
 console.log('Alice Address as Field:', alice.toFields()[0].toBigInt());
 
 // ---------------------------- Deploy MyFavoriteZkApp ----------------------------
@@ -118,9 +119,14 @@ const setupVkTx = await Mina.transaction(
 await setupVkTx.prove();
 await setupVkTx.sign([deployer.key]).send();
 
+// ---------------------------- Read Initial State ----------------------------
+console.log('Reading initial contract state...');
+const initialValue = await zkApp.protectedValue.get();
+console.log('Initial protected value:', initialValue.toBigInt());
+
 // ---------------------------- Update Contract State ----------------------------
 console.log('Updating contract state with verified proofs...');
-const newProtectedValue = Field(222);
+const newProtectedValue = Field(555);
 
 const updateTx = await Mina.transaction({ sender: deployer, fee }, async () => {
   await zkApp.updateValue(
@@ -132,4 +138,11 @@ const updateTx = await Mina.transaction({ sender: deployer, fee }, async () => {
   );
 });
 await updateTx.prove();
-await updateTx.sign([deployer.key]).send();
+const updateTxResult = await updateTx.sign([deployer.key]).send().then((v) => v.wait());
+equal(updateTxResult.status, 'included');
+
+// ---------------------------- Read Updated State ----------------------------
+console.log('Reading updated contract state...');
+const updatedValue = await zkApp.protectedValue.get();
+console.log('Updated protected value:', updatedValue.toBigInt());
+equal(updatedValue.toBigInt(), BigInt(555), 'Protected value should be updated to 555');
