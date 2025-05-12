@@ -18,7 +18,7 @@ import {
   generateCounterProof,
 } from './sideloaded-zkprograms.js';
 
-import { MyFavoriteZkApp } from './sideloaded-verifier-zkapp.js';
+import { MyFavoriteZkApp } from './verifier-zkapp.js';
 
 /**
  * This example showcases the side-loaded proof verification functionality:
