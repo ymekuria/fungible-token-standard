@@ -1,7 +1,8 @@
 /**
- * This module demonstrates the use of side-loaded verification keys in o1js,
- * a powerful feature that enables dynamic verification of proofs without requiring
- * the verification keys to be hardcoded into the circuit.
+ * This example is for demonstration purposes only and shows how
+ * side-loaded proofs work. In most cases, using baked-in proofs
+ * is preferred over side-loaded proofs unless you specifically
+ * need dynamic verification key updates.
  *
  * Side-loading allows zkApps to:
  * 1. Verify proofs from different circuits without recompilation
