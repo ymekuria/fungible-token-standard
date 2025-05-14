@@ -1,32 +1,22 @@
 import {
   Mina,
   PrivateKey,
-  PublicKey,
   AccountUpdate,
   UInt64,
   Bytes,
   VerificationKey,
-  Field,
-  Poseidon,
   UInt8,
-  Bool,
   Hash,
-  Permissions,
 } from 'o1js';
 import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
 import {
   EcdsaAndKeccakProgram,
   TokenManager,
-  EcdsaAndKeccakProof,
   EcdsaAndKeccakProgramPublicInput,
   Secp256k1,
   Ecdsa,
-  TokenManagerStorage,
 } from './token-manager.new.js';
-import {
-  generateDummyDynamicProof,
-  SideloadedProof,
-} from '../side-loaded/program.eg.js';
+import { generateDummyDynamicProof } from '../side-loaded/program.eg.js';
 import {
   MintDynamicProofConfig,
   BurnDynamicProofConfig,
@@ -67,9 +57,7 @@ console.log('\n---- Compiling Contracts & ZkPrograms ----');
 await EcdsaAndKeccakProgram.compile();
 await FungibleToken.compile();
 await TokenManager.compile();
-const asd =await TokenManagerStorage.compile()
 console.log('Compilation complete.');
-console.log(asd.verificationKey);
 
 console.log('\n---- Deploying FungibleToken Contract ----');
 const fungibleToken = new FungibleToken(fungibleTokenAddress);

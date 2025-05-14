@@ -15,7 +15,6 @@ import {
   PublicKey,
   State,
   state,
-  AccountUpdate,
   UInt64,
   VerificationKey,
 } from 'o1js';
@@ -105,7 +104,6 @@ export class TokenManager extends SmartContract {
     await super.deploy(args);
     this.account.permissions.set({
       ...Permissions.default(),
-      //access: Permissions.proof(), // or Signature could be an issue or no?
       send: Permissions.proof(),
       setVerificationKey:
         Permissions.VerificationKey.impossibleDuringCurrentVersion(),
@@ -136,35 +134,7 @@ export class TokenManager extends SmartContract {
     ftProof.verify(vk);
 
     const token = new FungibleToken(this.tokenAddress.getAndRequireEquals());
-
     const sender = this.sender.getUnconstrained();
-    const senderUpdate = AccountUpdate.createSigned(
-      sender,
-      token.deriveTokenId()
-    );
-    senderUpdate.body.useFullCommitment = Bool(true);
-
-    // senderUpdate.body.update.verificationKey = {
-    //   isSome: Bool(true),
-    //   value: {
-    //     data: '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',
-    //     hash: Field.from(
-    //       7894326702494978087371207912837667461494150249575251770422097814552270366674n
-    //     ),
-    //   },
-    // };
-    // senderUpdate.body.update.permissions = {
-    //   isSome: Bool(true),
-    //   value: {
-    //     ...Permissions.default(),
-    //     editState: Permissions.proof(),
-    //   },
-    // };
-
-    // senderUpdate.body.update.appState[0] = {
-    //   isSome: Bool(true),
-    //   value: amount.toFields()[0],
-    // };
 
     await token.transferCustom(
       this.address,
@@ -174,16 +144,5 @@ export class TokenManager extends SmartContract {
       vk,
       vKeyMap
     );
-  }
-}
-
-export class TokenManagerStorage extends SmartContract {
-  @state(Field) userKeyHash = State<Field>();
-  @state(UInt64) mintedSoFar = State<UInt64>();
-
-  @method
-  async increaseMintedAmount(amount: UInt64) {
-    let mintedSoFar = this.mintedSoFar.getAndRequireEquals();
-    this.mintedSoFar.set(mintedSoFar.add(amount));
   }
 }
