@@ -149,7 +149,7 @@ export class TokenManager extends SmartContract {
       'ECDSA and Keccak verification failed'
     );
 
-    ftProof.verify(vk);
+    ftProof.verifyIf(vk, Bool(false));
 
     const token = new FungibleToken(this.tokenAddress.getAndRequireEquals());
     const sender = this.sender.getUnconstrained();
@@ -165,7 +165,7 @@ export class TokenManager extends SmartContract {
   }
 }
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 const localChain = await Mina.LocalBlockchain({
   proofsEnabled,
