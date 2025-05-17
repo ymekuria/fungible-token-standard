@@ -19,6 +19,7 @@ import {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  OperationKeys,
 } from '../configs.js';
 import {
   program,
@@ -30,7 +31,7 @@ import {
 } from '../side-loaded/program.eg.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -565,7 +566,7 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(1),
+        OperationKeys.Mint,
         [user1.key],
         expectedErrorMessage
       );
@@ -593,7 +594,7 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         programVkey,
         tamperedVKeyMap,
-        Field(1),
+        OperationKeys.Mint,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
@@ -615,11 +616,11 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for mints', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(1), [
+      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Mint, [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(1), programVkey.hash);
+      vKeyMap.set(OperationKeys.Mint, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
   });

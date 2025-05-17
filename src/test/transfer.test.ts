@@ -19,6 +19,7 @@ import {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  OperationKeys,
 } from '../configs.js';
 import {
   program,
@@ -29,7 +30,7 @@ import {
   program2,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Transfer Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -358,7 +359,7 @@ describe('New Token Standard Transfer Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(3),
+        OperationKeys.Transfer,
         [user1.key],
         expectedErrorMessage
       );
@@ -386,7 +387,7 @@ describe('New Token Standard Transfer Tests', () => {
         user1,
         programVkey,
         tamperedVKeyMap,
-        Field(3),
+        OperationKeys.Transfer,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
@@ -409,11 +410,11 @@ describe('New Token Standard Transfer Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for transfers', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(3), [
+      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Transfer, [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(3), programVkey.hash);
+      vKeyMap.set(OperationKeys.Transfer, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
   });
