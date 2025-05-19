@@ -47,6 +47,7 @@ export {
   BurnEvent,
   BalanceChangeEvent,
   VKeyMerkleMap,
+  SideLoadedVKeyUpdateEvent,
 };
 
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
@@ -86,6 +87,7 @@ class FungibleToken extends TokenContract {
     Mint: MintEvent,
     Burn: BurnEvent,
     BalanceChange: BalanceChangeEvent,
+    SideLoadedVKeyUpdate: SideLoadedVKeyUpdateEvent,
   };
 
   private async ensureAdminSignature(condition: Bool) {
@@ -220,10 +222,21 @@ class FungibleToken extends TokenContract {
 
     isValidOperationKey.assertTrue('Please enter a valid operation key!');
 
+    const newVKeyHash = vKey.hash;
     vKeyMap = vKeyMap.clone();
-    vKeyMap.set(operationKey, vKey.hash);
+    vKeyMap.set(operationKey, newVKeyHash);
+    const newMerkleRoot = vKeyMap.root;
 
-    this.vKeyMapRoot.set(vKeyMap.root);
+    this.vKeyMapRoot.set(newMerkleRoot);
+
+    this.emitEvent(
+      'SideLoadedVKeyUpdate',
+      new SideLoadedVKeyUpdateEvent({
+        operationKey,
+        newVKeyHash,
+        newMerkleRoot,
+      })
+    );
   }
 
   @method
@@ -805,6 +818,12 @@ class BurnEvent extends Struct({
 class BalanceChangeEvent extends Struct({
   address: PublicKey,
   amount: Int64,
+}) {}
+
+class SideLoadedVKeyUpdateEvent extends Struct({
+  operationKey: Field,
+  newVKeyHash: Field,
+  newMerkleRoot: Field,
 }) {}
 
 // copied from: https://github.com/o1-labs/o1js/blob/6ebbc23710f6de023fea6d83dc93c5a914c571f2/src/lib/mina/token/token-contract.ts#L189
