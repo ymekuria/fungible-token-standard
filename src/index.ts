@@ -17,6 +17,7 @@ export {
     MintEvent,
     BurnEvent,
     BalanceChangeEvent,
+    SideLoadedVKeyUpdateEvent,
     VKeyMerkleMap,
 } from './NewTokenStandard.js'
 
