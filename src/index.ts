@@ -8,6 +8,7 @@ export {
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
   DynamicProofConfig,
+  OperationKeys
 } from './configs.js';
 
 export { 
