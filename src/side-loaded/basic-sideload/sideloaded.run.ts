@@ -18,7 +18,7 @@ import {
   generateCounterProof,
 } from './sideloaded-zkprograms.js';
 
-import { MyFavoriteZkApp } from './verifier-zkapp.js';
+import { SideloadedProofVerifierZkApp } from './verifier-zkapp.js';
 
 /**
  * This example showcases the side-loaded proof verification functionality:
@@ -38,33 +38,33 @@ const fee = 1e8;
 
 // Setup test accounts
 const [deployer, zkAppPrivateKey, alice] = localChain.testAccounts;
-const zkApp = new MyFavoriteZkApp(zkAppPrivateKey.key.toPublicKey());
+const zkApp = new SideloadedProofVerifierZkApp(zkAppPrivateKey.key.toPublicKey());
 
 // ---------------------------- Compile Programs ----------------------------
 console.log('Compiling ZkPrograms and generating verification keys...');
 const ecdsaVerificationKey = (await EcdsaProgram.compile()).verificationKey;
 const keccakVerificationKey = (await KeccakProgram.compile()).verificationKey;
 const counterVerificationKey = (await CounterProgram.compile()).verificationKey;
-const verifierContractKey = (await MyFavoriteZkApp.compile()).verificationKey;
+const verifierContractKey = (await SideloadedProofVerifierZkApp.compile()).verificationKey;
 
 // Log verification key hashes for reference
 console.log('ECDSA verification key hash:', ecdsaVerificationKey.hash.toBigInt());
 console.log('Keccak verification key hash:', keccakVerificationKey.hash.toBigInt());
 console.log('Counter verification key hash:', counterVerificationKey.hash.toBigInt());
-console.log('MyFavoriteZkApp verification key hash:', verifierContractKey.hash.toBigInt());
+console.log('SideloadedProofVerifierZkApp verification key hash:', verifierContractKey.hash.toBigInt());
 
 // Log addresses for reference
 console.log('Deployer Address:', deployer.toBase58());
 console.log('Deployer Address as Field:', deployer.toFields()[0].toBigInt());
-console.log('MyFavoriteZkApp Address:', zkAppPrivateKey.key.toPublicKey().toBase58());
+console.log('SideloadedProofVerifierZkApp Address:', zkAppPrivateKey.key.toPublicKey().toBase58());
 console.log(
-  'MyFavoriteZkApp Address as Field:',
+  'SideloadedProofVerifierZkApp Address as Field:',
   zkAppPrivateKey.key.toPublicKey().toFields()[0].toBigInt()
 );
 console.log('Alice Address:', alice.toBase58());
 console.log('Alice Address as Field:', alice.toFields()[0].toBigInt());
 
-// ---------------------------- Deploy MyFavoriteZkApp ----------------------------
+// ---------------------------- Deploy SideloadedProofVerifierZkApp ----------------------------
 console.log('Deploying the verifier contract...');
 const deployTx = await Mina.transaction({ sender: deployer, fee }, async () => {
   await zkApp.deploy({ owner: deployer });

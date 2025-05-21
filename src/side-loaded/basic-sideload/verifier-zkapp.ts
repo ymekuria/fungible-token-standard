@@ -15,9 +15,9 @@ import {
   KeccakSideloadedProof,
 } from './sideloaded-zkprograms.js';
 
-export { MyFavoriteZkApp };
+export { SideloadedProofVerifierZkApp };
 
-class MyFavoriteZkApp extends SmartContract {
+class SideloadedProofVerifierZkApp extends SmartContract {
   @state(PublicKey) contractOwner = State<PublicKey>();
   @state(Field) protectedValue = State<Field>();
   // Verification key hashes for side-loaded proofs
