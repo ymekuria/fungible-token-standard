@@ -27,6 +27,7 @@ import {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  OperationKeys,
 } from '../configs.js';
 import {
   program,
@@ -39,7 +40,7 @@ import {
   PublicOutputs,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard ApproveBase Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -582,7 +583,7 @@ describe('New Token Standard ApproveBase Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(4),
+        OperationKeys.ApproveBase,
         [user1.key],
         expectedErrorMessage
       );
@@ -610,7 +611,7 @@ describe('New Token Standard ApproveBase Tests', () => {
         user1,
         programVkey,
         tamperedVKeyMap,
-        Field(4),
+        OperationKeys.ApproveBase,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
@@ -632,11 +633,11 @@ describe('New Token Standard ApproveBase Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for updates', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(4), [
+      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.ApproveBase, [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(4), programVkey.hash);
+      vKeyMap.set(OperationKeys.ApproveBase, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
   });
@@ -713,11 +714,11 @@ describe('New Token Standard ApproveBase Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for updates to pause the method', async () => {
-      await updateSLVkeyHashTx(user1, pausedVkey, vKeyMap, Field(4), [
+      await updateSLVkeyHashTx(user1, pausedVkey, vKeyMap, OperationKeys.ApproveBase, [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(4), pausedVkey.hash);
+      vKeyMap.set(OperationKeys.ApproveBase, pausedVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
 

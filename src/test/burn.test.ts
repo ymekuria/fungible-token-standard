@@ -19,6 +19,7 @@ import {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  OperationKeys,
 } from '../configs.js';
 import {
   program,
@@ -29,7 +30,7 @@ import {
   program2,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Burn Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -517,7 +518,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         programVkey,
         vKeyMap,
-        Field(2),
+        OperationKeys.Burn,
         [user1.key],
         expectedErrorMessage
       );
@@ -545,7 +546,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         programVkey,
         tamperedVKeyMap,
-        Field(2),
+        OperationKeys.Burn,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
       );
@@ -567,11 +568,11 @@ describe('New Token Standard Burn Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for burns', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, Field(2), [
+      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Burn, [
         user1.key,
         tokenAdmin.key,
       ]);
-      vKeyMap.set(Field(2), programVkey.hash);
+      vKeyMap.set(OperationKeys.Burn, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
   });

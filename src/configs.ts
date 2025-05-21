@@ -10,6 +10,27 @@ export {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  OperationKeys
+};
+
+/**
+ * `OperationKeys` provides symbolic names for the different token operations
+ * that can have associated side-loaded verification keys.
+ *
+ * This ensures type safety and improves readability when referencing
+ * specific operations, for example, in the `VKeyMerkleMap` or when calling
+ * methods like `updateSideLoadedVKeyHash`.
+ *
+ * @property Mint - Operation key for minting tokens (corresponds to Field(1)).
+ * @property Burn - Operation key for burning tokens (corresponds to Field(2)).
+ * @property Transfer - Operation key for transferring tokens (corresponds to Field(3)).
+ * @property ApproveBase - Operation key for approving a forest of account updates (corresponds to Field(4)).
+ */
+const OperationKeys = {
+  Mint: Field(1),
+  Burn: Field(2),
+  Transfer: Field(3),
+  ApproveBase: Field(4),
 };
 
 /**

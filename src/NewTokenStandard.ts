@@ -31,6 +31,7 @@ import {
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
   DynamicProofConfig,
+  OperationKeys,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -213,10 +214,10 @@ class FungibleToken extends TokenContract {
     );
 
     const isValidOperationKey = operationKey
-      .equals(Field(1))
-      .or(operationKey.equals(Field(2)))
-      .or(operationKey.equals(Field(3)))
-      .or(operationKey.equals(Field(4)));
+      .equals(OperationKeys.Mint)
+      .or(operationKey.equals(OperationKeys.Burn))
+      .or(operationKey.equals(OperationKeys.Transfer))
+      .or(operationKey.equals(OperationKeys.ApproveBase));
 
     isValidOperationKey.assertTrue('Please enter a valid operation key!');
 
@@ -279,7 +280,7 @@ class FungibleToken extends TokenContract {
       recipient,
       mintDynamicProofConfig,
       vKeyMap,
-      Field(1)
+      OperationKeys.Mint
     );
 
     return accountUpdate;
@@ -323,7 +324,7 @@ class FungibleToken extends TokenContract {
       from,
       burnDynamicProofConfig,
       vKeyMap,
-      Field(2)
+      OperationKeys.Burn
     );
 
     return accountUpdate;
@@ -362,7 +363,7 @@ class FungibleToken extends TokenContract {
       from,
       transferDynamicProofConfig,
       vKeyMap,
-      Field(3)
+      OperationKeys.Transfer
     );
   }
 
@@ -457,7 +458,7 @@ class FungibleToken extends TokenContract {
       PublicKey.empty(),
       updatesDynamicProofConfig,
       vKeyMap,
-      Field(4)
+      OperationKeys.ApproveBase
     );
   }
 

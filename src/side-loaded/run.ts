@@ -19,6 +19,7 @@ import {
   BurnDynamicProofConfig,
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
+  OperationKeys,
 } from '../configs.js';
 import {
   program,
@@ -181,7 +182,7 @@ const updateVkeyTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.updateSideLoadedVKeyHash(vKey, vKeyMap, Field(1));
+    await token.updateSideLoadedVKeyHash(vKey, vKeyMap, OperationKeys.Mint);
   }
 );
 await updateVkeyTx.prove();
