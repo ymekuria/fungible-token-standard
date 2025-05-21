@@ -206,6 +206,7 @@ const deployFtTx = await Mina.transaction(
       symbol: 'TKN',
       src: 'https://github.com/o1-labs-XT/fungible-token-standard/blob/main/src/NewTokenStandard.ts',
     });
+    // Initialize FungibleToken with TokenManager as admin to have it as the token owner.
     await fungibleToken.initialize(
       tokenManagerAddress,
       UInt8.from(9),
@@ -247,6 +248,7 @@ const deployTmTx = await Mina.transaction(
   { sender: deployer, fee },
   async () => {
     AccountUpdate.fundNewAccount(deployer, 1);
+    // Deploy TokenManager with the FungibleToken address to enable it to perform token transfers.
     await tokenManager.deploy({ tokenAddress: fungibleTokenAddress });
   }
 );
