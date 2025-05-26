@@ -316,7 +316,7 @@ class MintParams extends AmountParams {
       initData = {
         fixedAmount: data.fixedAmount,
         minAmount: UInt64.from(0),
-        maxAmount: UInt64.from(1000),
+        maxAmount: UInt64.from(1),
       };
     } else {
       if (data.minAmount === undefined || data.maxAmount === undefined) {
@@ -330,7 +330,7 @@ class MintParams extends AmountParams {
         );
       }
       initData = {
-        fixedAmount: UInt64.from(200),
+        fixedAmount: UInt64.from(0),
         minAmount: data.minAmount,
         maxAmount: data.maxAmount,
       };
@@ -394,8 +394,8 @@ class BurnParams extends AmountParams {
       }
       initData = {
         fixedAmount: data.fixedAmount,
-        minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(1500),
+        minAmount: UInt64.from(0),
+        maxAmount: UInt64.from(1),
       };
     } else {
       if (data.minAmount === undefined || data.maxAmount === undefined) {
@@ -409,7 +409,7 @@ class BurnParams extends AmountParams {
         );
       }
       initData = {
-        fixedAmount: UInt64.from(500),
+        fixedAmount: UInt64.from(0),
         minAmount: data.minAmount,
         maxAmount: data.maxAmount,
       };

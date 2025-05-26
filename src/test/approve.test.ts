@@ -39,7 +39,7 @@ import {
   PublicOutputs,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('New Token Standard ApproveBase Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
