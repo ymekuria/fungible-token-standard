@@ -114,9 +114,6 @@ const dummyProof: SideloadedProof = await generateDummyDynamicProof(
   alexa.publicKey
 );
 
-const mintConfig = MintConfig.default;
-const burnConfig = BurnConfig.default;
-
 const mintParams = MintParams.create(MintConfig.default, {
   minAmount: UInt64.from(1),
   maxAmount: UInt64.from(100e9),
@@ -143,9 +140,9 @@ const deployTx = await Mina.transaction(
     await token.initialize(
       admin.publicKey,
       UInt8.from(9),
-      mintConfig,
+      MintConfig.default,
       mintParams,
-      burnConfig,
+      BurnConfig.default,
       burnParams,
       MintDynamicProofConfig.default,
       BurnDynamicProofConfig.default,

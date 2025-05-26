@@ -29,8 +29,14 @@ const [deployer, owner, admin, alexa, billy] = localChain.testAccounts;
 const contract = PrivateKey.randomKeypair();
 const token = new FungibleToken(contract.publicKey);
 
-const mintParams = MintParams.default;
-const burnParams = BurnParams.default;
+const mintParams = MintParams.create(MintConfig.default, {
+  minAmount: UInt64.from(1),
+  maxAmount: UInt64.from(1000),
+});
+const burnParams = BurnParams.create(BurnConfig.default, {
+  minAmount: UInt64.from(100),
+  maxAmount: UInt64.from(1500),
+});
 
 console.log('Deploying token contract.');
 const deployTx = await Mina.transaction(

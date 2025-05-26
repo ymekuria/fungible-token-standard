@@ -127,8 +127,14 @@ TokenContract Public Key: ${escrowContractKeyPair.publicKey.toBase58()}
 EscrowContract Public Key: ${escrowContractKeyPair.publicKey.toBase58()}
 `);
 
-const mintParams = MintParams.default;
-const burnParams = BurnParams.default;
+const mintParams = MintParams.create(MintConfig.default, {
+  minAmount: UInt64.from(1),
+  maxAmount: UInt64.from(1000),
+});
+const burnParams = BurnParams.create(BurnConfig.default, {
+  minAmount: UInt64.from(100),
+  maxAmount: UInt64.from(1500),
+});
 
 const tokenContract = new FungibleToken(tokenContractKeyPair.publicKey);
 const tokenId = tokenContract.deriveTokenId();

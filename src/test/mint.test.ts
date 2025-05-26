@@ -30,7 +30,7 @@ import {
 } from '../side-loaded/program.eg.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -64,8 +64,15 @@ describe('New Token Standard Mint Tests', () => {
     [deployer, user1, user2] = localChain.testAccounts;
     tokenContract = new FungibleToken(tokenA);
 
-    mintParams = MintParams.default;
-    burnParams = BurnParams.default;
+    mintParams = MintParams.create(MintConfig.default, {
+      minAmount: UInt64.from(0),
+      maxAmount: UInt64.from(1000),
+    });
+
+    burnParams = BurnParams.create(BurnConfig.default, {
+      minAmount: UInt64.from(100),
+      maxAmount: UInt64.from(1500),
+    });
 
     vKeyMap = new VKeyMerkleMap();
     dummyVkey = await VerificationKey.dummy();

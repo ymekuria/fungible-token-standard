@@ -52,8 +52,14 @@ Provable.log('Program verification key: ', vKey.hash);
 
 let vKeyMap = new VKeyMerkleMap();
 
-const mintParams = MintParams.default;
-const burnParams = BurnParams.default;
+const mintParams = MintParams.create(MintConfig.default, {
+  minAmount: UInt64.from(0),
+  maxAmount: UInt64.from(1000),
+});
+const burnParams = BurnParams.create(BurnConfig.default, {
+  minAmount: UInt64.from(100),
+  maxAmount: UInt64.from(1500),
+});
 
 // ----------------------- DEPLOY --------------------------------
 console.log('Deploying token contract.');

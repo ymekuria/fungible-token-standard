@@ -298,7 +298,7 @@ class MintParams extends AmountParams {
     config: MintConfig,
     data: { fixedAmount?: UInt64; minAmount?: UInt64; maxAmount?: UInt64 }
   ): MintParams {
-    config.validate(); 
+    config.validate();
 
     let initData: { fixedAmount: UInt64; minAmount: UInt64; maxAmount: UInt64 };
 
@@ -316,9 +316,9 @@ class MintParams extends AmountParams {
       initData = {
         fixedAmount: data.fixedAmount,
         minAmount: UInt64.from(0),
-        maxAmount: UInt64.from(1000), 
+        maxAmount: UInt64.from(1000),
       };
-    } else { 
+    } else {
       if (data.minAmount === undefined || data.maxAmount === undefined) {
         throw new Error(
           'MintConfig requires a ranged amount, but `minAmount` or `maxAmount` was not provided in params data.'
@@ -343,11 +343,6 @@ class MintParams extends AmountParams {
     }
     return paramsInstance;
   }
-
-  static default = MintParams.create(MintConfig.default, {
-    minAmount: UInt64.from(0),
-    maxAmount: UInt64.from(1000),
-  });
 }
 
 /**
@@ -400,9 +395,9 @@ class BurnParams extends AmountParams {
       initData = {
         fixedAmount: data.fixedAmount,
         minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(1500), 
+        maxAmount: UInt64.from(1500),
       };
-    } else { 
+    } else {
       if (data.minAmount === undefined || data.maxAmount === undefined) {
         throw new Error(
           'BurnConfig requires a ranged amount, but `minAmount` or `maxAmount` was not provided in params data.'
@@ -427,11 +422,6 @@ class BurnParams extends AmountParams {
     }
     return paramsInstance;
   }
-
-  static default = BurnParams.create(BurnConfig.default, {
-    minAmount: UInt64.from(100),
-    maxAmount: UInt64.from(1500),
-  });
 }
 
 /**

@@ -29,7 +29,7 @@ import {
   program2,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Transfer Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -64,8 +64,15 @@ describe('New Token Standard Transfer Tests', () => {
     [deployer, user1, user2, user3] = localChain.testAccounts;
     tokenContract = new FungibleToken(tokenA);
 
-    mintParams = MintParams.default;
-    burnParams = BurnParams.default;
+    mintParams = MintParams.create(MintConfig.default, {
+      minAmount: UInt64.from(0),
+      maxAmount: UInt64.from(1000),
+    });
+
+    burnParams = BurnParams.create(BurnConfig.default, {
+      minAmount: UInt64.from(50),
+      maxAmount: UInt64.from(500),
+    });
 
     vKeyMap = new VKeyMerkleMap();
     dummyVkey = await VerificationKey.dummy();
