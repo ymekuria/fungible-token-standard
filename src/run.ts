@@ -37,17 +37,8 @@ const dummyProof = await generateDummyDynamicProof(
   alexa
 );
 
-const mintParams = new MintParams({
-  fixedAmount: UInt64.from(200),
-  minAmount: UInt64.from(0),
-  maxAmount: UInt64.from(1000),
-});
-
-const burnParams = new BurnParams({
-  fixedAmount: UInt64.from(500),
-  minAmount: UInt64.from(100),
-  maxAmount: UInt64.from(1500),
-});
+const mintParams = MintParams.default;
+const burnParams = BurnParams.default;
 
 // ----------------------- DEPLOY --------------------------------
 console.log('Deploying token contract.');
