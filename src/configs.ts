@@ -334,13 +334,13 @@ class MintParams extends AmountParams {
         minAmount: data.minAmount,
         maxAmount: data.maxAmount,
       };
+      initData.minAmount.assertLessThan(
+        initData.maxAmount,
+        'Invalid amount range!'
+      );
     }
 
     const paramsInstance = new MintParams(initData);
-
-    if (config.rangedAmount.toBoolean()) {
-      paramsInstance.validate();
-    }
     return paramsInstance;
   }
 }
@@ -413,13 +413,13 @@ class BurnParams extends AmountParams {
         minAmount: data.minAmount,
         maxAmount: data.maxAmount,
       };
+      initData.minAmount.assertLessThan(
+        initData.maxAmount,
+        'Invalid amount range!'
+      );
     }
 
     const paramsInstance = new BurnParams(initData);
-
-    if (config.rangedAmount.toBoolean()) {
-      paramsInstance.validate();
-    }
     return paramsInstance;
   }
 }
