@@ -609,6 +609,93 @@ class FungibleToken extends TokenContract {
     );
   }
 
+  /**
+   * Approves a single account update without requiring side-loaded proof verification.
+   * This function can only be used when dynamic proof verification is disabled in the updates configuration.
+   *
+   * @param accountUpdate - The account update to approve
+   * @throws {Error} If dynamic proof verification is enabled in the updates configuration
+   * @throws {Error} If the update involves the circulation account
+   * @throws {Error} If the update would result in flash minting
+   * @throws {Error} If the update would result in an unbalanced transaction
+   */
+  async approveAccountUpdateSideloadDisabled(
+    accountUpdate: AccountUpdate | AccountUpdateTree
+  ) {
+    let forest = toForest([accountUpdate]);
+    await this.approveBaseSideloadDisabled(forest);
+  }
+
+  /**
+   * Approves multiple account updates without requiring side-loaded proof verification.
+   * This function can only be used when dynamic proof verification is disabled in the updates configuration.
+   *
+   * @param accountUpdates - The account updates to approve
+   * @throws {Error} If dynamic proof verification is enabled in the updates configuration
+   * @throws {Error} If any update involves the circulation account
+   * @throws {Error} If the updates would result in flash minting
+   * @throws {Error} If the updates would result in an unbalanced transaction
+   */
+  async approveAccountUpdatesSideloadDisabled(
+    accountUpdates: (AccountUpdate | AccountUpdateTree)[]
+  ) {
+    let forest = toForest(accountUpdates);
+    await this.approveBaseSideloadDisabled(forest);
+  }
+
+  /**
+   * Approves a forest of account updates without requiring side-loaded proof verification.
+   * This function can only be used when dynamic proof verification is disabled in the updates configuration.
+   *
+   * @param updates - The forest of account updates to approve
+   * @throws {Error} If dynamic proof verification is enabled in the updates configuration
+   * @throws {Error} If any update involves the circulation account
+   * @throws {Error} If the updates would result in flash minting
+   * @throws {Error} If the updates would result in an unbalanced transaction
+   */
+  async approveBaseSideloadDisabled(
+    updates: AccountUpdateForest
+  ): Promise<void> {
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const updatesDynamicProofConfig = UpdatesDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+    updatesDynamicProofConfig.shouldVerify.assertFalse(
+      FungibleTokenErrors.noPermissionForSideloadDisabledOperation
+    );
+
+    let totalBalance = Int64.from(0);
+    this.forEachUpdate(updates, (update, usesToken) => {
+      // Make sure that the account permissions are not changed
+      this.checkPermissionsUpdate(update);
+      this.emitEventIf(
+        usesToken,
+        'BalanceChange',
+        new BalanceChangeEvent({
+          address: update.publicKey,
+          amount: update.balanceChange,
+        })
+      );
+      // Don't allow transfers to/from the account that's tracking circulation
+      update.publicKey
+        .equals(this.address)
+        .and(usesToken)
+        .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
+
+      totalBalance = Provable.if(
+        usesToken,
+        totalBalance.add(update.balanceChange),
+        totalBalance
+      );
+      totalBalance.isPositive().assertFalse(FungibleTokenErrors.flashMinting);
+    });
+    totalBalance.assertEquals(
+      Int64.zero,
+      FungibleTokenErrors.unbalancedTransaction
+    );
+  }
+
   async approveAccountUpdateCustom(
     accountUpdate: AccountUpdate | AccountUpdateTree,
     proof: SideloadedProof,
