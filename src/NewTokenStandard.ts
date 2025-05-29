@@ -301,6 +301,58 @@ class FungibleToken extends TokenContract {
     return accountUpdate;
   }
 
+  /**
+   * Mints tokens to a recipient without requiring side-loaded proof verification.
+   * This function can only be used when dynamic proof verification is disabled in the mint configuration.
+   * 
+   * @param recipient - The public key of the account to receive the minted tokens
+   * @param amount - The amount of tokens to mint
+   * @returns The account update for the mint operation
+   * @throws {Error} If dynamic proof verification is enabled in the mint configuration
+   * @throws {Error} If the recipient is the circulation account
+   * @throws {Error} If the minting operation is not authorized
+   */
+  @method.returns(AccountUpdate)
+  async mintSideloadDisabled(
+    recipient: PublicKey,
+    amount: UInt64
+  ): Promise<AccountUpdate> {
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const mintDynamicProofConfig = MintDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+    mintDynamicProofConfig.shouldVerify.assertFalse(
+      FungibleTokenErrors.noPermissionForSideloadDisabledOperation
+    );
+
+    const accountUpdate = this.internal.mint({ address: recipient, amount });
+    accountUpdate.body.useFullCommitment;
+
+    const packedMintParams = this.packedMintParams.getAndRequireEquals();
+    const mintParams = MintParams.unpack(packedMintParams);
+
+    const canMint = await this.canMint(accountUpdate, mintParams);
+    canMint.assertTrue(FungibleTokenErrors.noPermissionToMint);
+
+    recipient
+      .equals(this.address)
+      .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
+
+    this.approve(accountUpdate);
+
+    this.emitEvent('Mint', new MintEvent({ recipient, amount }));
+
+    const circulationUpdate = AccountUpdate.create(
+      this.address,
+      this.deriveTokenId()
+    );
+
+    circulationUpdate.balanceChange = Int64.fromUnsigned(amount);
+
+    return accountUpdate;
+  }
+
   @method.returns(AccountUpdate)
   async burn(
     from: PublicKey,
