@@ -480,6 +480,40 @@ class FungibleToken extends TokenContract {
     );
   }
 
+  /**
+   * Transfers tokens between accounts without requiring side-loaded proof verification.
+   * This function can only be used when dynamic proof verification is disabled in the transfer configuration.
+   * 
+   * @param from - The public key of the account to transfer tokens from
+   * @param to - The public key of the account to transfer tokens to
+   * @param amount - The amount of tokens to transfer
+   * @throws {Error} If dynamic proof verification is enabled in the transfer configuration
+   * @throws {Error} If either the from or to account is the circulation account
+   */
+  @method
+  async transferSideloadDisabled(
+    from: PublicKey,
+    to: PublicKey,
+    amount: UInt64
+  ) {
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const transferDynamicProofConfig = TransferDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+    transferDynamicProofConfig.shouldVerify.assertFalse(
+      FungibleTokenErrors.noPermissionForSideloadDisabledOperation
+    );
+
+    from
+      .equals(this.address)
+      .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
+    to.equals(this.address).assertFalse(
+      FungibleTokenErrors.noTransferFromCirculation
+    );
+    this.internal.send({ from, to, amount });
+  }
+
   private checkPermissionsUpdate(update: AccountUpdate) {
     let permissions = update.update.permissions;
 
