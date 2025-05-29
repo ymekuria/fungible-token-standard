@@ -66,6 +66,8 @@ const FungibleTokenErrors = {
   noPermissionToBurn: 'Not allowed to burn tokens',
   noPermissionToPause: 'Not allowed to pause token',
   noPermissionToResume: 'Not allowed to resume token',
+  noPermissionForSideloadDisabledOperation:
+    "Can't use the method, side-loading is enabled in config",
   noTransferFromCirculation: "Can't transfer to/from the circulation account",
   noPermissionChangeAllowed:
     "Can't change permissions for access or receive on token accounts",
