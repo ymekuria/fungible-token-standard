@@ -9,7 +9,11 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
+import {
+  FungibleToken,
+  VKeyMerkleMap,
+  FungibleTokenErrors,
+} from '../NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -31,7 +35,7 @@ import {
 } from '../side-loaded/program.eg.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('New Token Standard Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -139,6 +143,32 @@ describe('New Token Standard Mint Tests', () => {
           dummyVkey,
           vKeyMap
         );
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const userBalanceAfter = await tokenContract.getBalanceOf(user);
+      expect(userBalanceAfter).toEqual(userBalanceBefore.add(mintAmount));
+
+      if (expectedErrorMessage)
+        throw new Error('Test should have failed but didnt!');
+    } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function testMintSideloadDisabledTx(
+    user: PublicKey,
+    mintAmount: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string,
+    numberOfAccounts = 2
+  ) {
+    try {
+      const userBalanceBefore = await tokenContract.getBalanceOf(user);
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        AccountUpdate.fundNewAccount(user, numberOfAccounts);
+        await tokenContract.mintSideloadDisabled(user, mintAmount);
       });
       await tx.prove();
       await tx.sign(signers).send().wait();
@@ -355,7 +385,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('Should initialize tokenA contract', async () => {
+    it('should initialize tokenA contract', async () => {
       await testInitializeTx([deployer.key, tokenA.key]);
     });
 
@@ -373,12 +403,35 @@ describe('New Token Standard Mint Tests', () => {
       await testMintTx(user1, UInt64.from(200), [user1.key, tokenAdmin.key]);
     });
 
+    it('should mint an amount within the valid range with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(100);
+      // User1 signs for the AU, tokenAdmin signs because default MintConfig is authorized
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key, tokenAdmin.key],
+        '',
+        2
+      );
+    });
+
     it('should reject minting an amount outside the valid range', async () => {
       await testMintTx(
         user1,
         UInt64.from(1100),
         [user1.key, tokenAdmin.key],
         'Not allowed to mint tokens'
+      );
+    });
+
+    it('should reject minting amount outside the valid range with mintSideloadDisabled', async () => {
+      // Attempt to mint an amount outside the default MintParams range (0-1000)
+      const invalidMintAmount = UInt64.from(2000);
+      await testMintSideloadDisabledTx(
+        user1,
+        invalidMintAmount,
+        [user1.key, tokenAdmin.key],
+        FungibleTokenErrors.noPermissionToMint
       );
     });
 
@@ -405,11 +458,32 @@ describe('New Token Standard Mint Tests', () => {
       }
     });
 
+    it('should reject minting to the circulation supply account with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        tokenContract.address, // recipient is the contract itself
+        mintAmount,
+        [deployer.key, tokenAdmin.key], // deployer funds and initiates, admin authorizes mint
+        FungibleTokenErrors.noTransferFromCirculation
+      );
+    });
+
     it('should reject unauthorized minting', async () => {
       await testMintTx(
         user1,
         UInt64.from(300),
         [user1.key],
+        'the required authorization was not provided or is invalid.'
+      );
+    });
+
+    it('should reject unauthorized minting with mintSideloadDisabled', async () => {
+      // Attempt to mint without admin signature (default MintConfig is authorized)
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key], // Missing tokenAdmin.key
         'the required authorization was not provided or is invalid.'
       );
     });
@@ -505,12 +579,27 @@ describe('New Token Standard Mint Tests', () => {
       await testMintTx(user2, UInt64.from(600), [user2.key], undefined, 1);
     });
 
+    it('should allow minting without authorization with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(600);
+      await testMintSideloadDisabledTx(user2, mintAmount, [user2.key], '');
+    });
+
     it('should reject minting an amount different from the fixed value', async () => {
       await testMintTx(
         user1,
         UInt64.from(500),
         [user1.key],
         'Not allowed to mint tokens'
+      );
+    });
+
+    it('should reject minting an amount different from the fixed value with mintSideloadDisabled', async () => {
+      const wrongMintAmount = UInt64.from(55);
+      await testMintSideloadDisabledTx(
+        user1,
+        wrongMintAmount,
+        [user1.key],
+        FungibleTokenErrors.noPermissionToMint
       );
     });
   });
@@ -616,10 +705,13 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for mints', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Mint, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateSLVkeyHashTx(
+        user1,
+        programVkey,
+        vKeyMap,
+        OperationKeys.Mint,
+        [user1.key, tokenAdmin.key]
+      );
       vKeyMap.set(OperationKeys.Mint, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
@@ -884,6 +976,16 @@ describe('New Token Standard Mint Tests', () => {
         programVkey,
         vKeyMap,
         expectedErrorMessage
+      );
+    });
+
+    it('should reject mint when side-loaded verification is enabled with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key, tokenAdmin.key],
+        FungibleTokenErrors.noPermissionForSideloadDisabledOperation
       );
     });
   });
