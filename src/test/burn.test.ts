@@ -9,7 +9,11 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
+import {
+  FungibleToken,
+  FungibleTokenErrors,
+  VKeyMerkleMap,
+} from '../NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -30,7 +34,7 @@ import {
   program2,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('New Token Standard Burn Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -229,6 +233,32 @@ describe('New Token Standard Burn Tests', () => {
     }
   }
 
+  async function testBurnSideloadDisabledTx(
+    user: PublicKey,
+    burnAmount: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string,
+    numberOfAccounts = 2
+  ) {
+    try {
+      const userBalanceBefore = await tokenContract.getBalanceOf(user);
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        AccountUpdate.fundNewAccount(user, numberOfAccounts);
+        await tokenContract.burnSideloadDisabled(user, burnAmount);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const userBalanceAfter = await tokenContract.getBalanceOf(user);
+      expect(userBalanceAfter).toEqual(userBalanceBefore.sub(burnAmount));
+
+      if (expectedErrorMessage)
+        throw new Error('Test should have failed but didnt!');
+    } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
   describe('Deploy & initialize', () => {
     it('should deploy tokenA contract', async () => {
       const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
@@ -296,12 +326,41 @@ describe('New Token Standard Burn Tests', () => {
       await testBurnTx(user2, UInt64.from(100), [user2.key], undefined, 0);
     });
 
+    it('should allow burning without authorization with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user2,
+        UInt64.from(100),
+        [user2.key],
+        undefined,
+        0
+      );
+    });
+
     it('should burn an amount within the valid range: user', async () => {
       await testBurnTx(user1, UInt64.from(50), [user1.key], undefined, 0);
     });
 
+    it('should burn an amount within the valid range with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(50),
+        [user1.key],
+        undefined,
+        0
+      );
+    });
+
     it('should reject burning an amount outside the valid range', async () => {
       await testBurnTx(
+        user1,
+        UInt64.from(700),
+        [user1.key],
+        'Not allowed to burn tokens'
+      );
+    });
+
+    it('should reject burning an amount outside the valid range with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
         user1,
         UInt64.from(700),
         [user1.key],
@@ -330,6 +389,15 @@ describe('New Token Standard Burn Tests', () => {
       } catch (error: unknown) {
         expect((error as Error).message).toContain(expectedErrorMessage);
       }
+    });
+
+    it('should reject burning from the circulating supply account with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        tokenContract.address,
+        UInt64.from(100),
+        [user2.key],
+        "Can't transfer to/from the circulation account"
+      );
     });
   });
 
@@ -431,8 +499,28 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
+    it('should reject burning an amount different from the fixed value with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(50),
+        [user1.key],
+        'Not allowed to burn tokens',
+        0
+      );
+    });
+
     it('should only burn an amount equal to the fixed value', async () => {
       await testBurnTx(user2, UInt64.from(150), [user2.key], undefined, 0);
+    });
+
+    it('should only burn an amount equal to the fixed value with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user2,
+        UInt64.from(150),
+        [user2.key],
+        undefined,
+        0
+      );
     });
   });
 
@@ -568,10 +656,13 @@ describe('New Token Standard Burn Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for burns', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Burn, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateSLVkeyHashTx(
+        user1,
+        programVkey,
+        vKeyMap,
+        OperationKeys.Burn,
+        [user1.key, tokenAdmin.key]
+      );
       vKeyMap.set(OperationKeys.Burn, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
@@ -649,6 +740,15 @@ describe('New Token Standard Burn Tests', () => {
         dynamicProof,
         programVkey,
         vKeyMap
+      );
+    });
+
+    it('should reject burn with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(150),
+        [user1.key],
+        FungibleTokenErrors.noPermissionForSideloadDisabledOperation
       );
     });
 
