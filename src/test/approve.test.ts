@@ -568,9 +568,10 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesSideloadDisabled(
-              [updateSend, updateReceive],
-            );
+            await tokenContract.approveAccountUpdatesSideloadDisabled([
+              updateSend,
+              updateReceive,
+            ]);
           }
         );
       };
