@@ -304,7 +304,7 @@ class FungibleToken extends TokenContract {
   /**
    * Mints tokens to a recipient without requiring side-loaded proof verification.
    * This function can only be used when dynamic proof verification is disabled in the mint configuration.
-   * 
+   *
    * @param recipient - The public key of the account to receive the minted tokens
    * @param amount - The amount of tokens to mint
    * @returns The account update for the mint operation
@@ -400,7 +400,7 @@ class FungibleToken extends TokenContract {
   /**
    * Burns tokens from an account without requiring side-loaded proof verification.
    * This function can only be used when dynamic proof verification is disabled in the burn configuration.
-   * 
+   *
    * @param from - The public key of the account to burn tokens from
    * @param amount - The amount of tokens to burn
    * @returns The account update for the burn operation
@@ -483,7 +483,7 @@ class FungibleToken extends TokenContract {
   /**
    * Transfers tokens between accounts without requiring side-loaded proof verification.
    * This function can only be used when dynamic proof verification is disabled in the transfer configuration.
-   * 
+   *
    * @param from - The public key of the account to transfer tokens from
    * @param to - The public key of the account to transfer tokens to
    * @param amount - The amount of tokens to transfer
