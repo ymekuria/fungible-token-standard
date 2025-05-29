@@ -397,6 +397,52 @@ class FungibleToken extends TokenContract {
     return accountUpdate;
   }
 
+  /**
+   * Burns tokens from an account without requiring side-loaded proof verification.
+   * This function can only be used when dynamic proof verification is disabled in the burn configuration.
+   * 
+   * @param from - The public key of the account to burn tokens from
+   * @param amount - The amount of tokens to burn
+   * @returns The account update for the burn operation
+   * @throws {Error} If dynamic proof verification is enabled in the burn configuration
+   * @throws {Error} If the from account is the circulation account
+   * @throws {Error} If the burning operation is not authorized
+   */
+  @method.returns(AccountUpdate)
+  async burnSideloadDisabled(
+    from: PublicKey,
+    amount: UInt64
+  ): Promise<AccountUpdate> {
+    const packedDynamicProofConfigs =
+      this.packedDynamicProofConfigs.getAndRequireEquals();
+    const burnDynamicProofConfig = BurnDynamicProofConfig.unpack(
+      packedDynamicProofConfigs
+    );
+    burnDynamicProofConfig.shouldVerify.assertFalse(
+      FungibleTokenErrors.noPermissionForSideloadDisabledOperation
+    );
+    const accountUpdate = this.internal.burn({ address: from, amount });
+
+    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
+    const burnParams = BurnParams.unpack(packedBurnParams);
+
+    const canBurn = await this.canBurn(accountUpdate, burnParams);
+    canBurn.assertTrue(FungibleTokenErrors.noPermissionToBurn);
+
+    const circulationUpdate = AccountUpdate.create(
+      this.address,
+      this.deriveTokenId()
+    );
+    from
+      .equals(this.address)
+      .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
+
+    circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
+    this.emitEvent('Burn', new BurnEvent({ from, amount }));
+
+    return accountUpdate;
+  }
+
   override async transfer(from: PublicKey, to: PublicKey, amount: UInt64) {
     throw Error('Use transferCustom() method instead.');
   }
