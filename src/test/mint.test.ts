@@ -785,7 +785,7 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should reject mintParams update when unauthorized by the admin', async () => {
       mintParams = new MintParams({
-        fixedAmount: UInt64.from(600),
+        fixedAmount: UInt64.from(300),
         minAmount: UInt64.from(100),
         maxAmount: UInt64.from(900),
       });
@@ -802,6 +802,199 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should update packed mintParams', async () => {
       await updateMintParamsTx(user1, mintParams, [user1.key, tokenAdmin.key]);
+    });
+
+    it('should update mint fixed amount via field-specific function', async () => {
+      const newFixedAmount = UInt64.from(600);
+      await updateMintFixedAmountTx(user1, newFixedAmount, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const paramsAfterUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterUpdate.fixedAmount).toEqual(newFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(mintParams.minAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(mintParams.maxAmount);
+    });
+
+    it('should reject mint fixed amount update via field-specific function when unauthorized by the admin', async () => {
+      1;
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const fixedAmountBeforeAttempt = paramsBeforeAttempt.fixedAmount;
+      const minAmountBeforeAttempt = paramsBeforeAttempt.minAmount;
+      const maxAmountBeforeAttempt = paramsBeforeAttempt.maxAmount;
+
+      const newFixedAmountAttempt = UInt64.from(750);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintFixedAmountTx(
+        user1,
+        newFixedAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(
+        fixedAmountBeforeAttempt
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(minAmountBeforeAttempt);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(maxAmountBeforeAttempt);
+    });
+
+    it('should update mint min amount via field-specific function', async () => {
+      const paramsBeforeUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMaxAmount = paramsBeforeUpdate.maxAmount;
+
+      const newMinAmount = UInt64.from(50);
+      await updateMintMinAmountTx(user1, newMinAmount, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const paramsAfterUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterUpdate.minAmount).toEqual(newMinAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount); // Should not change
+      expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount); // Should not change
+    });
+
+    it('should reject mint min amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMinAmountAttempt = UInt64.from(150);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintMinAmountTx(
+        user1,
+        newMinAmountAttempt,
+        [user1.key], // No admin signature
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should reject mint min amount update via field-specific function when minAmount > maxAmount', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMinAmount = originalMaxAmount.add(100);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateMintMinAmountTx(
+        user1,
+        invalidNewMinAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should update mint max amount via field-specific function', async () => {
+      const paramsBeforeUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMinAmount = paramsBeforeUpdate.minAmount;
+
+      const newMaxAmount = UInt64.from(1200);
+      await updateMintMaxAmountTx(user1, newMaxAmount, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const paramsAfterUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterUpdate.maxAmount).toEqual(newMaxAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject mint max amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMaxAmountAttempt = UInt64.from(1300);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintMaxAmountTx(
+        user1,
+        newMaxAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject mint max amount update via field-specific function when maxAmount < minAmount', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMaxAmount = originalMinAmount.sub(10);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateMintMaxAmountTx(
+        user1,
+        invalidNewMaxAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
     });
   });
 
