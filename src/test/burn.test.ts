@@ -1065,10 +1065,13 @@ describe('New Token Standard Burn Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for burns', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Burn, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateSLVkeyHashTx(
+        user1,
+        programVkey,
+        vKeyMap,
+        OperationKeys.Burn,
+        [user1.key, tokenAdmin.key]
+      );
       vKeyMap.set(OperationKeys.Burn, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
