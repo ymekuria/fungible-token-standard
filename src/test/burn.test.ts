@@ -229,6 +229,174 @@ describe('New Token Standard Burn Tests', () => {
     }
   }
 
+  async function updateBurnFixedAmountConfigTx(
+    user: PublicKey,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateBurnFixedAmountConfig(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+      expect(burnConfigAfter.fixedAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnRangedAmountConfigTx(
+    user: PublicKey,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateBurnRangedAmountConfig(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+      expect(burnConfigAfter.rangedAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnUnauthorizedConfigTx(
+    user: PublicKey,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateBurnUnauthorizedConfig(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+      expect(burnConfigAfter.unauthorized).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnFixedAmountTx(
+    user: PublicKey,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateBurnFixedAmount(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedBurnParams.get();
+      const params = BurnParams.unpack(packedParams);
+      expect(params.fixedAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnMinAmountTx(
+    user: PublicKey,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateBurnMinAmount(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedBurnParams.get();
+      const params = BurnParams.unpack(packedParams);
+      expect(params.minAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnMaxAmountTx(
+    user: PublicKey,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateBurnMaxAmount(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedBurnParams.get();
+      const params = BurnParams.unpack(packedParams);
+      expect(params.maxAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
   describe('Deploy & initialize', () => {
     it('should deploy tokenA contract', async () => {
       const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
