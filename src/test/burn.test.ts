@@ -539,12 +539,149 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should update packed burnConfig', async () => {
       const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
+        unauthorized: Bool(false),
+        fixedAmount: Bool(false),
+        rangedAmount: Bool(true),
       });
 
       await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
+    });
+
+    it('should update burn fixedAmount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+
+      const newFixedAmountValue = Bool(true);
+      await updateBurnFixedAmountConfigTx(user2, newFixedAmountValue, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.fixedAmount).toEqual(newFixedAmountValue);
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(burnConfigAfter.rangedAmount).toEqual(newFixedAmountValue.not());
+    });
+
+    it('should reject burn fixed amount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+
+      const attemptFixedAmountValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnFixedAmountConfigTx(
+        user2,
+        attemptFixedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update burn ranged amount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+      const newRangedAmountValue = Bool(false);
+      await updateBurnRangedAmountConfigTx(user2, newRangedAmountValue, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.rangedAmount).toEqual(newRangedAmountValue);
+      expect(burnConfigAfter.fixedAmount).toEqual(newRangedAmountValue.not());
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should reject rangedAmount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+
+      const attemptRangedAmountValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnRangedAmountConfigTx(
+        user2,
+        attemptRangedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update burn unauthorized config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+
+      const newUnauthorizedValue = Bool(true);
+      await updateBurnUnauthorizedConfigTx(user2, newUnauthorizedValue, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.unauthorized).toEqual(newUnauthorizedValue);
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+    });
+
+    it('should reject unauthorized config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+
+      const attemptUnauthorizedValue = Bool(false);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnUnauthorizedConfigTx(
+        user2,
+        attemptUnauthorizedValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
     });
   });
 
