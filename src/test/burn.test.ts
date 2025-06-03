@@ -704,9 +704,9 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should reject burnParams update when unauthorized by the admin', async () => {
       burnParams = new BurnParams({
-        fixedAmount: UInt64.from(150),
-        minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(850),
+        fixedAmount: UInt64.from(100),
+        minAmount: UInt64.from(50),
+        maxAmount: UInt64.from(600),
       });
 
       const expectedErrorMessage =
@@ -721,6 +721,198 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should update packed burnParams', async () => {
       await updateBurnParamsTx(user1, burnParams, [user1.key, tokenAdmin.key]);
+    });
+
+    it('should update burn fixed amount via field-specific function', async () => {
+      const newFixedAmount = UInt64.from(150);
+      await updateBurnFixedAmountTx(user1, newFixedAmount, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const paramsAfterUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterUpdate.fixedAmount).toEqual(newFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(burnParams.minAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(burnParams.maxAmount);
+    });
+
+    it('should reject burn fixed amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const fixedAmountBeforeAttempt = paramsBeforeAttempt.fixedAmount;
+      const minAmountBeforeAttempt = paramsBeforeAttempt.minAmount;
+      const maxAmountBeforeAttempt = paramsBeforeAttempt.maxAmount;
+
+      const newFixedAmountAttempt = UInt64.from(750);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnFixedAmountTx(
+        user1,
+        newFixedAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(
+        fixedAmountBeforeAttempt
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(minAmountBeforeAttempt);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(maxAmountBeforeAttempt);
+    });
+
+    it('should update burn min amount via field-specific function', async () => {
+      const paramsBeforeUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMaxAmount = paramsBeforeUpdate.maxAmount;
+
+      const newMinAmount = UInt64.from(100);
+      await updateBurnMinAmountTx(user1, newMinAmount, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const paramsAfterUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterUpdate.minAmount).toEqual(newMinAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should reject burn min amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMinAmountAttempt = UInt64.from(150);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnMinAmountTx(
+        user1,
+        newMinAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should reject burn min amount update via field-specific function when minAmount > maxAmount', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMinAmount = originalMaxAmount.add(100);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateBurnMinAmountTx(
+        user1,
+        invalidNewMinAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should update burn max amount via field-specific function', async () => {
+      const paramsBeforeUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMinAmount = paramsBeforeUpdate.minAmount;
+
+      const newMaxAmount = UInt64.from(850);
+      await updateBurnMaxAmountTx(user1, newMaxAmount, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const paramsAfterUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterUpdate.maxAmount).toEqual(newMaxAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject burn max amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMaxAmountAttempt = UInt64.from(1300);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnMaxAmountTx(
+        user1,
+        newMaxAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject burn max amount update via field-specific function when maxAmount < minAmount', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMaxAmount = originalMinAmount.sub(10);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateBurnMaxAmountTx(
+        user1,
+        invalidNewMaxAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
     });
   });
 
