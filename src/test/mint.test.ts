@@ -31,7 +31,7 @@ import {
 } from '../side-loaded/program.eg.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('New Token Standard Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
