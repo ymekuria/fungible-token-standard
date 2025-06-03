@@ -1114,10 +1114,13 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for mints', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Mint, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateSLVkeyHashTx(
+        user1,
+        programVkey,
+        vKeyMap,
+        OperationKeys.Mint,
+        [user1.key, tokenAdmin.key]
+      );
       vKeyMap.set(OperationKeys.Mint, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
