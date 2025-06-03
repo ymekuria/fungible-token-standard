@@ -620,12 +620,149 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should update packed mintConfig', async () => {
       const mintConfig = new MintConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
+        unauthorized: Bool(false),
+        fixedAmount: Bool(false),
+        rangedAmount: Bool(true),
       });
 
       await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);
+    });
+
+    it('should update fixedAmount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+
+      const newFixedAmountValue = Bool(true);
+      await updateMintFixedAmountConfigTx(user2, newFixedAmountValue, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.fixedAmount).toEqual(newFixedAmountValue);
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(mintConfigAfter.rangedAmount).toEqual(newFixedAmountValue.not());
+    });
+
+    it('should reject mint fixed amount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+
+      const attemptFixedAmountValue = Bool(false);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintFixedAmountConfigTx(
+        user2,
+        attemptFixedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update mint ranged amount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+      const newRangedAmountValue = Bool(false);
+      await updateMintRangedAmountConfigTx(user2, newRangedAmountValue, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.rangedAmount).toEqual(newRangedAmountValue);
+      expect(mintConfigAfter.fixedAmount).toEqual(newRangedAmountValue.not());
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should reject rangedAmount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+
+      const attemptRangedAmountValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintRangedAmountConfigTx(
+        user2,
+        attemptRangedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update mint unauthorized config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+
+      const newUnauthorizedValue = Bool(true);
+      await updateMintUnauthorizedConfigTx(user2, newUnauthorizedValue, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.unauthorized).toEqual(newUnauthorizedValue);
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+    });
+
+    it('should reject unauthorized config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+
+      const attemptUnauthorizedValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintUnauthorizedConfigTx(
+        user2,
+        attemptUnauthorizedValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
     });
   });
 
