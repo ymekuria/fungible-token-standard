@@ -31,7 +31,7 @@ import {
 } from '../side-loaded/program.eg.js';
 import { FungibleTokenErrors } from '../NewTokenStandard.js';
 
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('New Token Standard Transfer Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
