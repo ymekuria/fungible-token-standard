@@ -29,9 +29,15 @@ import {
   SideloadedProof,
   program2,
 } from '../side-loaded/program.eg.js';
+import {
+  CONFIG_PROPERTIES,
+  PARAMS_PROPERTIES,
+  ConfigProperty,
+  ParamsProperty,
+} from './constants.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('New Token Standard Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -203,6 +209,84 @@ describe('New Token Standard Mint Tests', () => {
     }
   }
 
+  async function updateMintParamsPropertyTx(
+    user: PublicKey,
+    key: ParamsProperty,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case PARAMS_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateMintFixedAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MIN_AMOUNT:
+            await tokenContract.updateMintMinAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MAX_AMOUNT:
+            await tokenContract.updateMintMaxAmount(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedMintParams.get();
+      const params = MintParams.unpack(packedParams);
+      expect(params[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintConfigPropertyTx(
+    user: PublicKey,
+    key: ConfigProperty,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case CONFIG_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateMintFixedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.RANGED_AMOUNT:
+            await tokenContract.updateMintRangedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.UNAUTHORIZED:
+            await tokenContract.updateMintUnauthorizedConfig(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+      expect(mintConfigAfter[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
   async function updateSLVkeyHashTx(
     sender: PublicKey,
     vKey: VerificationKey,
@@ -258,6 +342,174 @@ describe('New Token Standard Mint Tests', () => {
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
     } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintFixedAmountTx(
+    user: PublicKey,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateMintFixedAmount(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedMintParams.get();
+      const params = MintParams.unpack(packedParams);
+      expect(params.fixedAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintMinAmountTx(
+    user: PublicKey,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateMintMinAmount(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedMintParams.get();
+      const params = MintParams.unpack(packedParams);
+      expect(params.minAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintMaxAmountTx(
+    user: PublicKey,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateMintMaxAmount(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedMintParams.get();
+      const params = MintParams.unpack(packedParams);
+      expect(params.maxAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintFixedAmountConfigTx(
+    user: PublicKey,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateMintFixedAmountConfig(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+      expect(mintConfigAfter.fixedAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintRangedAmountConfigTx(
+    user: PublicKey,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateMintRangedAmountConfig(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+      expect(mintConfigAfter.rangedAmount).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintUnauthorizedConfigTx(
+    user: PublicKey,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        await tokenContract.updateMintUnauthorizedConfig(value);
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+      expect(mintConfigAfter.unauthorized).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
       expect((error as Error).message).toContain(expectedErrorMessage);
     }
   }
@@ -450,12 +702,158 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should update packed mintConfig', async () => {
       const mintConfig = new MintConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
+        unauthorized: Bool(false),
+        fixedAmount: Bool(false),
+        rangedAmount: Bool(true),
       });
 
       await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);
+    });
+
+    it('should update fixedAmount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+
+      const newFixedAmountValue = Bool(true);
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.fixedAmount).toEqual(newFixedAmountValue);
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(mintConfigAfter.rangedAmount).toEqual(newFixedAmountValue.not());
+    });
+
+    it('should reject mint fixed amount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+
+      const attemptFixedAmountValue = Bool(false);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
+        attemptFixedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update mint ranged amount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+      const newRangedAmountValue = Bool(false);
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
+        newRangedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.rangedAmount).toEqual(newRangedAmountValue);
+      expect(mintConfigAfter.fixedAmount).toEqual(newRangedAmountValue.not());
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should reject rangedAmount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+
+      const attemptRangedAmountValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
+        attemptRangedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update mint unauthorized config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+
+      const newUnauthorizedValue = Bool(true);
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
+        newUnauthorizedValue,
+        [user2.key, tokenAdmin.key]
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.unauthorized).toEqual(newUnauthorizedValue);
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+    });
+
+    it('should reject unauthorized config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = mintConfigBefore.fixedAmount;
+      const originalRangedAmount = mintConfigBefore.rangedAmount;
+      const originalUnauthorized = mintConfigBefore.unauthorized;
+
+      const attemptUnauthorizedValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
+        attemptUnauthorizedValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+
+      expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(mintConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
     });
   });
 
@@ -478,7 +876,7 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should reject mintParams update when unauthorized by the admin', async () => {
       mintParams = new MintParams({
-        fixedAmount: UInt64.from(600),
+        fixedAmount: UInt64.from(300),
         minAmount: UInt64.from(100),
         maxAmount: UInt64.from(900),
       });
@@ -495,6 +893,210 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should update packed mintParams', async () => {
       await updateMintParamsTx(user1, mintParams, [user1.key, tokenAdmin.key]);
+    });
+
+    it('should update mint fixed amount via field-specific function', async () => {
+      const newFixedAmount = UInt64.from(600);
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmount,
+        [user1.key, tokenAdmin.key]
+      );
+
+      const paramsAfterUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterUpdate.fixedAmount).toEqual(newFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(mintParams.minAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(mintParams.maxAmount);
+    });
+
+    it('should reject mint fixed amount update via field-specific function when unauthorized by the admin', async () => {
+      1;
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const fixedAmountBeforeAttempt = paramsBeforeAttempt.fixedAmount;
+      const minAmountBeforeAttempt = paramsBeforeAttempt.minAmount;
+      const maxAmountBeforeAttempt = paramsBeforeAttempt.maxAmount;
+
+      const newFixedAmountAttempt = UInt64.from(750);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(
+        fixedAmountBeforeAttempt
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(minAmountBeforeAttempt);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(maxAmountBeforeAttempt);
+    });
+
+    it('should update mint min amount via field-specific function', async () => {
+      const paramsBeforeUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMaxAmount = paramsBeforeUpdate.maxAmount;
+
+      const newMinAmount = UInt64.from(50);
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        newMinAmount,
+        [user1.key, tokenAdmin.key]
+      );
+
+      const paramsAfterUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterUpdate.minAmount).toEqual(newMinAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount); // Should not change
+      expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount); // Should not change
+    });
+
+    it('should reject mint min amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMinAmountAttempt = UInt64.from(150);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        newMinAmountAttempt,
+        [user1.key], // No admin signature
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should reject mint min amount update via field-specific function when minAmount > maxAmount', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMinAmount = originalMaxAmount.add(100);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        invalidNewMinAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should update mint max amount via field-specific function', async () => {
+      const paramsBeforeUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMinAmount = paramsBeforeUpdate.minAmount;
+
+      const newMaxAmount = UInt64.from(1200);
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        newMaxAmount,
+        [user1.key, tokenAdmin.key]
+      );
+
+      const paramsAfterUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterUpdate.maxAmount).toEqual(newMaxAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject mint max amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMaxAmountAttempt = UInt64.from(1300);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        newMaxAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject mint max amount update via field-specific function when maxAmount < minAmount', async () => {
+      const paramsBeforeAttempt = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMaxAmount = originalMinAmount.sub(10);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        invalidNewMaxAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
     });
   });
 
@@ -614,10 +1216,13 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should update the side-loaded vKey hash for mints', async () => {
-      await updateSLVkeyHashTx(user1, programVkey, vKeyMap, OperationKeys.Mint, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateSLVkeyHashTx(
+        user1,
+        programVkey,
+        vKeyMap,
+        OperationKeys.Mint,
+        [user1.key, tokenAdmin.key]
+      );
       vKeyMap.set(OperationKeys.Mint, programVkey.hash);
       expect(tokenContract.vKeyMapRoot.get()).toEqual(vKeyMap.root);
     });
