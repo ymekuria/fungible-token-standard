@@ -33,6 +33,12 @@ import {
   SideloadedProof,
   program2,
 } from '../side-loaded/program.eg.js';
+import {
+  CONFIG_PROPERTIES,
+  PARAMS_PROPERTIES,
+  ConfigProperty,
+  ParamsProperty,
+} from './constants.js';
 
 const proofsEnabled = false;
 
@@ -68,14 +74,12 @@ describe('New Token Standard Burn Tests', () => {
     [deployer, user1, user2] = localChain.testAccounts;
     tokenContract = new FungibleToken(tokenA);
 
-    mintParams = new MintParams({
-      fixedAmount: UInt64.from(200),
+    mintParams = MintParams.create(MintConfig.default, {
       minAmount: UInt64.from(0),
       maxAmount: UInt64.from(1000),
     });
 
-    burnParams = new BurnParams({
-      fixedAmount: UInt64.from(100),
+    burnParams = BurnParams.create(BurnConfig.default, {
       minAmount: UInt64.from(50),
       maxAmount: UInt64.from(500),
     });
@@ -170,6 +174,84 @@ describe('New Token Standard Burn Tests', () => {
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
     } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnParamsPropertyTx(
+    user: PublicKey,
+    key: ParamsProperty,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case PARAMS_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateBurnFixedAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MIN_AMOUNT:
+            await tokenContract.updateBurnMinAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MAX_AMOUNT:
+            await tokenContract.updateBurnMaxAmount(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedBurnParams.get();
+      const params = BurnParams.unpack(packedParams);
+      expect(params[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnConfigPropertyTx(
+    user: PublicKey,
+    key: ConfigProperty,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case CONFIG_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateBurnFixedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.RANGED_AMOUNT:
+            await tokenContract.updateBurnRangedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.UNAUTHORIZED:
+            await tokenContract.updateBurnUnauthorizedConfig(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+      expect(burnConfigAfter[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
       expect((error as Error).message).toContain(expectedErrorMessage);
     }
   }
@@ -439,12 +521,158 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should update packed burnConfig', async () => {
       const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(false),
+        unauthorized: Bool(false),
+        fixedAmount: Bool(false),
+        rangedAmount: Bool(true),
       });
 
       await updateBurnConfigTx(user2, burnConfig, [user2.key, tokenAdmin.key]);
+    });
+
+    it('should update burn fixedAmount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+
+      const newFixedAmountValue = Bool(true);
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.fixedAmount).toEqual(newFixedAmountValue);
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(burnConfigAfter.rangedAmount).toEqual(newFixedAmountValue.not());
+    });
+
+    it('should reject burn fixed amount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+
+      const attemptFixedAmountValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
+        attemptFixedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update burn ranged amount config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+      const newRangedAmountValue = Bool(false);
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
+        newRangedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.rangedAmount).toEqual(newRangedAmountValue);
+      expect(burnConfigAfter.fixedAmount).toEqual(newRangedAmountValue.not());
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should reject rangedAmount config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+
+      const attemptRangedAmountValue = Bool(true);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
+        attemptRangedAmountValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+    });
+
+    it('should update burn unauthorized config via field-specific function', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+
+      const newUnauthorizedValue = Bool(true);
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
+        newUnauthorizedValue,
+        [user2.key, tokenAdmin.key]
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.unauthorized).toEqual(newUnauthorizedValue);
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
+    });
+
+    it('should reject unauthorized config update via field-specific function when unauthorized by the admin', async () => {
+      const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
+      const burnConfigBefore = BurnConfig.unpack(packedConfigsBefore);
+      const originalFixedAmount = burnConfigBefore.fixedAmount;
+      const originalRangedAmount = burnConfigBefore.rangedAmount;
+      const originalUnauthorized = burnConfigBefore.unauthorized;
+
+      const attemptUnauthorizedValue = Bool(false);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
+        attemptUnauthorizedValue,
+        [user2.key],
+        expectedErrorMessage
+      );
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+
+      expect(burnConfigAfter.unauthorized).toEqual(originalUnauthorized);
+      expect(burnConfigAfter.fixedAmount).toEqual(originalFixedAmount);
+      expect(burnConfigAfter.rangedAmount).toEqual(originalRangedAmount);
     });
   });
 
@@ -467,9 +695,9 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should reject burnParams update when unauthorized by the admin', async () => {
       burnParams = new BurnParams({
-        fixedAmount: UInt64.from(150),
-        minAmount: UInt64.from(100),
-        maxAmount: UInt64.from(850),
+        fixedAmount: UInt64.from(100),
+        minAmount: UInt64.from(50),
+        maxAmount: UInt64.from(600),
       });
 
       const expectedErrorMessage =
@@ -484,6 +712,209 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should update packed burnParams', async () => {
       await updateBurnParamsTx(user1, burnParams, [user1.key, tokenAdmin.key]);
+    });
+
+    it('should update burn fixed amount via field-specific function', async () => {
+      const newFixedAmount = UInt64.from(150);
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmount,
+        [user1.key, tokenAdmin.key]
+      );
+
+      const paramsAfterUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterUpdate.fixedAmount).toEqual(newFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(burnParams.minAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(burnParams.maxAmount);
+    });
+
+    it('should reject burn fixed amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const fixedAmountBeforeAttempt = paramsBeforeAttempt.fixedAmount;
+      const minAmountBeforeAttempt = paramsBeforeAttempt.minAmount;
+      const maxAmountBeforeAttempt = paramsBeforeAttempt.maxAmount;
+
+      const newFixedAmountAttempt = UInt64.from(750);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(
+        fixedAmountBeforeAttempt
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(minAmountBeforeAttempt);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(maxAmountBeforeAttempt);
+    });
+
+    it('should update burn min amount via field-specific function', async () => {
+      const paramsBeforeUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMaxAmount = paramsBeforeUpdate.maxAmount;
+
+      const newMinAmount = UInt64.from(100);
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        newMinAmount,
+        [user1.key, tokenAdmin.key]
+      );
+
+      const paramsAfterUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterUpdate.minAmount).toEqual(newMinAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should reject burn min amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMinAmountAttempt = UInt64.from(150);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        newMinAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should reject burn min amount update via field-specific function when minAmount > maxAmount', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMinAmount = originalMaxAmount.add(100);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        invalidNewMinAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+    });
+
+    it('should update burn max amount via field-specific function', async () => {
+      const paramsBeforeUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeUpdate.fixedAmount;
+      const originalMinAmount = paramsBeforeUpdate.minAmount;
+
+      const newMaxAmount = UInt64.from(850);
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        newMaxAmount,
+        [user1.key, tokenAdmin.key]
+      );
+
+      const paramsAfterUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterUpdate.maxAmount).toEqual(newMaxAmount);
+      expect(paramsAfterUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject burn max amount update via field-specific function when unauthorized by the admin', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const newMaxAmountAttempt = UInt64.from(1300);
+      const expectedErrorMessage =
+        'the required authorization was not provided or is invalid.';
+
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        newMaxAmountAttempt,
+        [user1.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
+    });
+
+    it('should reject burn max amount update via field-specific function when maxAmount < minAmount', async () => {
+      const paramsBeforeAttempt = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      const originalFixedAmount = paramsBeforeAttempt.fixedAmount;
+      const originalMinAmount = paramsBeforeAttempt.minAmount;
+      const originalMaxAmount = paramsBeforeAttempt.maxAmount;
+
+      const invalidNewMaxAmount = originalMinAmount.sub(10);
+      const expectedErrorMessage = 'Invalid amount range!';
+
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        invalidNewMaxAmount,
+        [user1.key, tokenAdmin.key],
+        expectedErrorMessage
+      );
+
+      const paramsAfterFailedUpdate = BurnParams.unpack(
+        tokenContract.packedBurnParams.get()
+      );
+      expect(paramsAfterFailedUpdate.maxAmount).toEqual(originalMaxAmount);
+      expect(paramsAfterFailedUpdate.fixedAmount).toEqual(originalFixedAmount);
+      expect(paramsAfterFailedUpdate.minAmount).toEqual(originalMinAmount);
     });
   });
 

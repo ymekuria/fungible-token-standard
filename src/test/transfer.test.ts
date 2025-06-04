@@ -66,14 +66,12 @@ describe('New Token Standard Transfer Tests', () => {
     [deployer, user1, user2, user3] = localChain.testAccounts;
     tokenContract = new FungibleToken(tokenA);
 
-    mintParams = new MintParams({
-      fixedAmount: UInt64.from(200),
+    mintParams = MintParams.create(MintConfig.default, {
       minAmount: UInt64.from(0),
       maxAmount: UInt64.from(1000),
     });
 
-    burnParams = new BurnParams({
-      fixedAmount: UInt64.from(100),
+    burnParams = BurnParams.create(BurnConfig.default, {
       minAmount: UInt64.from(50),
       maxAmount: UInt64.from(500),
     });

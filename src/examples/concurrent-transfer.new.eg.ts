@@ -114,13 +114,11 @@ const dummyProof: SideloadedProof = await generateDummyDynamicProof(
   alexa.publicKey
 );
 
-const mintParams = new MintParams({
-  fixedAmount: UInt64.from(0),
+const mintParams = MintParams.create(MintConfig.default, {
   minAmount: UInt64.from(1),
   maxAmount: UInt64.from(100e9),
 });
-const burnParams = new BurnParams({
-  fixedAmount: UInt64.from(0),
+const burnParams = BurnParams.create(BurnConfig.default, {
   minAmount: UInt64.from(1),
   maxAmount: UInt64.from(100e9),
 });

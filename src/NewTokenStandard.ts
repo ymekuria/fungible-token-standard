@@ -980,6 +980,128 @@ class FungibleToken extends TokenContract {
     // Conditionally verify the provided side-loaded proof.
     proof.verifyIf(vk, shouldVerify);
   }
+
+  @method
+  async updateMintFixedAmount(value: UInt64) {
+    this.ensureAdminSignature(Bool(true));
+    const packedMintParams = this.packedMintParams.getAndRequireEquals();
+    const params = MintParams.unpack(packedMintParams);
+    params.fixedAmount = value;
+    this.packedMintParams.set(params.pack());
+  }
+
+  @method
+  async updateMintMinAmount(value: UInt64) {
+    this.ensureAdminSignature(Bool(true));
+    const packedMintParams = this.packedMintParams.getAndRequireEquals();
+    const params = MintParams.unpack(packedMintParams);
+    params.minAmount = value;
+    params.validate();
+    this.packedMintParams.set(params.pack());
+  }
+
+  @method
+  async updateMintMaxAmount(value: UInt64) {
+    this.ensureAdminSignature(Bool(true));
+    const packedMintParams = this.packedMintParams.getAndRequireEquals();
+    const params = MintParams.unpack(packedMintParams);
+    params.maxAmount = value;
+    params.validate();
+    this.packedMintParams.set(params.pack());
+  }
+
+  @method
+  async updateBurnFixedAmount(value: UInt64) {
+    this.ensureAdminSignature(Bool(true));
+    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
+    const params = BurnParams.unpack(packedBurnParams);
+    params.fixedAmount = value;
+    this.packedBurnParams.set(params.pack());
+  }
+
+  @method
+  async updateBurnMinAmount(value: UInt64) {
+    this.ensureAdminSignature(Bool(true));
+    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
+    const params = BurnParams.unpack(packedBurnParams);
+    params.minAmount = value;
+    params.validate();
+    this.packedBurnParams.set(params.pack());
+  }
+
+  @method
+  async updateBurnMaxAmount(value: UInt64) {
+    this.ensureAdminSignature(Bool(true));
+    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
+    const params = BurnParams.unpack(packedBurnParams);
+    params.maxAmount = value;
+    params.validate();
+    this.packedBurnParams.set(params.pack());
+  }
+
+  @method
+  async updateMintFixedAmountConfig(value: Bool) {
+    this.ensureAdminSignature(Bool(true));
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const config = MintConfig.unpack(packedConfigs);
+    config.fixedAmount = value;
+    config.rangedAmount = value.not();
+    config.validate();
+    this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+  }
+
+  @method
+  async updateMintRangedAmountConfig(value: Bool) {
+    this.ensureAdminSignature(Bool(true));
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const config = MintConfig.unpack(packedConfigs);
+    config.rangedAmount = value;
+    config.fixedAmount = value.not();
+    config.validate();
+    this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+  }
+
+  @method
+  async updateMintUnauthorizedConfig(value: Bool) {
+    this.ensureAdminSignature(Bool(true));
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const config = MintConfig.unpack(packedConfigs);
+    config.unauthorized = value;
+    config.validate();
+    this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+  }
+
+  @method
+  async updateBurnFixedAmountConfig(value: Bool) {
+    this.ensureAdminSignature(Bool(true));
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const config = BurnConfig.unpack(packedConfigs);
+    config.fixedAmount = value;
+    config.rangedAmount = value.not();
+    config.validate();
+    this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+  }
+
+  @method
+  async updateBurnRangedAmountConfig(value: Bool) {
+    this.ensureAdminSignature(Bool(true));
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const config = BurnConfig.unpack(packedConfigs);
+    config.rangedAmount = value;
+    config.fixedAmount = value.not();
+    config.validate();
+    this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+  }
+
+  @method
+  async updateBurnUnauthorizedConfig(value: Bool) {
+    this.ensureAdminSignature(Bool(true));
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const config = BurnConfig.unpack(packedConfigs);
+    config.unauthorized = value;
+    config.validate();
+    this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+  }
 }
 
 class SetAdminEvent extends Struct({

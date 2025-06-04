@@ -127,13 +127,11 @@ TokenContract Public Key: ${escrowContractKeyPair.publicKey.toBase58()}
 EscrowContract Public Key: ${escrowContractKeyPair.publicKey.toBase58()}
 `);
 
-const mintParams = new MintParams({
-  fixedAmount: UInt64.from(200),
+const mintParams = MintParams.create(MintConfig.default, {
   minAmount: UInt64.from(1),
   maxAmount: UInt64.from(1000),
 });
-const burnParams = new BurnParams({
-  fixedAmount: UInt64.from(500),
+const burnParams = BurnParams.create(BurnConfig.default, {
   minAmount: UInt64.from(100),
   maxAmount: UInt64.from(1500),
 });
