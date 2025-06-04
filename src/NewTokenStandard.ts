@@ -252,7 +252,7 @@ class FungibleToken extends TokenContract {
   }
 
   @method.returns(AccountUpdate)
-  async mint(
+  async mintWithProof(
     recipient: PublicKey,
     amount: UInt64,
     proof: SideloadedProof,
@@ -313,10 +313,7 @@ class FungibleToken extends TokenContract {
    * @throws {Error} If the minting operation is not authorized
    */
   @method.returns(AccountUpdate)
-  async mintSideloadDisabled(
-    recipient: PublicKey,
-    amount: UInt64
-  ): Promise<AccountUpdate> {
+  async mint(recipient: PublicKey, amount: UInt64): Promise<AccountUpdate> {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const mintDynamicProofConfig = MintDynamicProofConfig.unpack(
@@ -354,7 +351,7 @@ class FungibleToken extends TokenContract {
   }
 
   @method.returns(AccountUpdate)
-  async burn(
+  async burnWithProof(
     from: PublicKey,
     amount: UInt64,
     proof: SideloadedProof,
@@ -409,10 +406,7 @@ class FungibleToken extends TokenContract {
    * @throws {Error} If the burning operation is not authorized
    */
   @method.returns(AccountUpdate)
-  async burnSideloadDisabled(
-    from: PublicKey,
-    amount: UInt64
-  ): Promise<AccountUpdate> {
+  async burn(from: PublicKey, amount: UInt64): Promise<AccountUpdate> {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const burnDynamicProofConfig = BurnDynamicProofConfig.unpack(
@@ -444,11 +438,13 @@ class FungibleToken extends TokenContract {
   }
 
   override async transfer(from: PublicKey, to: PublicKey, amount: UInt64) {
-    throw Error('Use transferCustom() method instead.');
+    throw Error(
+      'Use transferCustom() or transferCustomWithProof() method instead.'
+    );
   }
 
   @method
-  async transferCustom(
+  async transferCustomWithProof(
     from: PublicKey,
     to: PublicKey,
     amount: UInt64,
@@ -537,19 +533,25 @@ class FungibleToken extends TokenContract {
   }
 
   async approveBase(forest: AccountUpdateForest): Promise<void> {
-    throw new Error('Use the approveBaseCustom method instead');
+    throw new Error(
+      'Use the approveBaseCustom() or approveBaseCustomWithProof() method instead'
+    );
   }
 
   override async approveAccountUpdate(
     accountUpdate: AccountUpdate | AccountUpdateTree
   ) {
-    throw new Error('Use the approveAccountUpdateCustom method instead');
+    throw new Error(
+      'Use the approveAccountUpdateCustom() or approveAccountUpdateCustomWithProof() method instead'
+    );
   }
 
   override async approveAccountUpdates(
     accountUpdates: (AccountUpdate | AccountUpdateTree)[]
   ) {
-    throw new Error('Use the approveAccountUpdatesCustom method instead');
+    throw new Error(
+      'Use the approveAccountUpdatesCustom() or approveAccountUpdatesCustomWithProof() method instead'
+    );
   }
 
   /** Approve `AccountUpdate`s that have been created outside of the token contract.
@@ -557,7 +559,7 @@ class FungibleToken extends TokenContract {
    * @argument {AccountUpdateForest} updates - The `AccountUpdate`s to approve. Note that the forest size is limited by the base token contract, @see TokenContract.MAX_ACCOUNT_UPDATES The current limit is 9.
    */
   @method
-  async approveBaseCustom(
+  async approveBaseCustomWithProof(
     updates: AccountUpdateForest,
     proof: SideloadedProof,
     vk: VerificationKey,
@@ -619,11 +621,11 @@ class FungibleToken extends TokenContract {
    * @throws {Error} If the update would result in flash minting
    * @throws {Error} If the update would result in an unbalanced transaction
    */
-  async approveAccountUpdateSideloadDisabled(
+  async approveAccountUpdateCustom(
     accountUpdate: AccountUpdate | AccountUpdateTree
   ) {
     let forest = toForest([accountUpdate]);
-    await this.approveBaseSideloadDisabled(forest);
+    await this.approveBaseCustom(forest);
   }
 
   /**
@@ -636,11 +638,11 @@ class FungibleToken extends TokenContract {
    * @throws {Error} If the updates would result in flash minting
    * @throws {Error} If the updates would result in an unbalanced transaction
    */
-  async approveAccountUpdatesSideloadDisabled(
+  async approveAccountUpdatesCustom(
     accountUpdates: (AccountUpdate | AccountUpdateTree)[]
   ) {
     let forest = toForest(accountUpdates);
-    await this.approveBaseSideloadDisabled(forest);
+    await this.approveBaseCustom(forest);
   }
 
   /**
@@ -653,9 +655,7 @@ class FungibleToken extends TokenContract {
    * @throws {Error} If the updates would result in flash minting
    * @throws {Error} If the updates would result in an unbalanced transaction
    */
-  async approveBaseSideloadDisabled(
-    updates: AccountUpdateForest
-  ): Promise<void> {
+  async approveBaseCustom(updates: AccountUpdateForest): Promise<void> {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const updatesDynamicProofConfig = UpdatesDynamicProofConfig.unpack(
@@ -696,24 +696,24 @@ class FungibleToken extends TokenContract {
     );
   }
 
-  async approveAccountUpdateCustom(
+  async approveAccountUpdateCustomWithProof(
     accountUpdate: AccountUpdate | AccountUpdateTree,
     proof: SideloadedProof,
     vk: VerificationKey,
     vKeyMap: VKeyMerkleMap
   ) {
     let forest = toForest([accountUpdate]);
-    await this.approveBaseCustom(forest, proof, vk, vKeyMap);
+    await this.approveBaseCustomWithProof(forest, proof, vk, vKeyMap);
   }
 
-  async approveAccountUpdatesCustom(
+  async approveAccountUpdatesCustomWithProof(
     accountUpdates: (AccountUpdate | AccountUpdateTree)[],
     proof: SideloadedProof,
     vk: VerificationKey,
     vKeyMap: VKeyMerkleMap
   ) {
     let forest = toForest(accountUpdates);
-    await this.approveBaseCustom(forest, proof, vk, vKeyMap);
+    await this.approveBaseCustomWithProof(forest, proof, vk, vKeyMap);
   }
 
   @method.returns(UInt64)
