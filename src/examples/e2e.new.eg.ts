@@ -88,7 +88,13 @@ const dummyProof: SideloadedProof = await generateDummyDynamicProof(
 );
 const mintTx = await Mina.transaction({ sender: owner, fee }, async () => {
   AccountUpdate.fundNewAccount(owner, 1);
-  await token.mint(alexa, mintParams.maxAmount, dummyProof, dummyVkey, vKeyMap);
+  await token.mintWithProof(
+    alexa,
+    mintParams.maxAmount,
+    dummyProof,
+    dummyVkey,
+    vKeyMap
+  );
 });
 await mintTx.prove();
 mintTx.sign([owner.key, admin.key]);
@@ -107,7 +113,7 @@ equal(alexaBalanceBeforeMint, 0n);
 console.log('Transferring tokens from Alexa to Billy');
 const transferTx = await Mina.transaction({ sender: alexa, fee }, async () => {
   AccountUpdate.fundNewAccount(alexa, 1);
-  await token.transferCustom(
+  await token.transferCustomWithProof(
     alexa,
     billy,
     mintParams.maxAmount,
@@ -133,7 +139,7 @@ equal(billyBalanceAfterTransfer, mintParams.maxAmount.toBigInt());
 
 console.log("Burning Billy's tokens");
 const burnTx = await Mina.transaction({ sender: billy, fee }, async () => {
-  await token.burn(
+  await token.burnWithProof(
     billy,
     burnParams.fixedAmount,
     dummyProof,

@@ -65,7 +65,7 @@ async function sendNoWait(
       if (payCreationFee) {
         AccountUpdate.fundNewAccount(feepayer.publicKey, 1);
       }
-      await token.transferCustom(
+      await token.transferCustomWithProof(
         from.publicKey,
         to,
         new UInt64(amount),
@@ -166,7 +166,7 @@ const mintTx = await Mina.transaction(
   },
   async () => {
     AccountUpdate.fundNewAccount(feepayer.publicKey, 2);
-    await token.mint(
+    await token.mintWithProof(
       alexa.publicKey,
       new UInt64(100e9),
       dummyProof,
@@ -189,7 +189,7 @@ const transferTx1 = await Mina.transaction(
   },
   async () => {
     AccountUpdate.fundNewAccount(feepayer.publicKey, 1);
-    await token.transferCustom(
+    await token.transferCustomWithProof(
       alexa.publicKey,
       billy.publicKey,
       new UInt64(5e9),

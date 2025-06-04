@@ -71,7 +71,7 @@ export class TokenEscrow extends SmartContract {
     const senderUpdate = AccountUpdate.createSigned(sender);
     senderUpdate.body.useFullCommitment = Bool(true);
     this.sender.getAndRequireSignature;
-    await token.transferCustom(
+    await token.transferCustomWithProof(
       sender,
       this.address,
       amount,
@@ -207,7 +207,7 @@ const deployEscrowTx = await Mina.transaction(
       owner,
     });
 
-    await tokenContract.approveAccountUpdateCustom(
+    await tokenContract.approveAccountUpdateCustomWithProof(
       escrowContract.self,
       dummyProof,
       dummyVkey,
@@ -234,7 +234,7 @@ const mintAlexaTx = await Mina.transaction(
   { sender: deployer, fee },
   async () => {
     AccountUpdate.fundNewAccount(deployer, 1);
-    await tokenContract.mint(
+    await tokenContract.mintWithProof(
       alexa,
       mintParams.maxAmount,
       dummyProof,
@@ -254,7 +254,7 @@ const mintBillyTx = await Mina.transaction(
   { sender: deployer, fee },
   async () => {
     AccountUpdate.fundNewAccount(deployer, 1);
-    await tokenContract.mint(
+    await tokenContract.mintWithProof(
       billy,
       mintParams.maxAmount,
       dummyProof,
@@ -282,7 +282,7 @@ const depositTx1 = await Mina.transaction(
       dummyVkey,
       vKeyMap
     );
-    await tokenContract.approveAccountUpdateCustom(
+    await tokenContract.approveAccountUpdateCustomWithProof(
       escrowContract.self,
       dummyProof,
       dummyVkey,
@@ -315,7 +315,7 @@ const depositTx2 = await Mina.transaction(
       dummyVkey,
       vKeyMap
     );
-    await tokenContract.approveAccountUpdateCustom(
+    await tokenContract.approveAccountUpdateCustomWithProof(
       escrowContract.self,
       dummyProof,
       dummyVkey,
@@ -347,7 +347,7 @@ const withdrawTx = await Mina.transaction(
   async () => {
     AccountUpdate.fundNewAccount(owner, 1);
     await escrowContract.withdraw(jackie, new UInt64(25));
-    await tokenContract.approveAccountUpdateCustom(
+    await tokenContract.approveAccountUpdateCustomWithProof(
       escrowContract.self,
       dummyProof,
       dummyVkey,
@@ -376,7 +376,7 @@ const directWithdrawTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await tokenContract.transferCustom(
+    await tokenContract.transferCustomWithProof(
       escrowContractKeyPair.publicKey,
       jackie,
       new UInt64(10),
