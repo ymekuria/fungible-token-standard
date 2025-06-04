@@ -35,7 +35,7 @@ import {
 } from '../side-loaded/program.eg.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -136,7 +136,7 @@ describe('New Token Standard Mint Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user,
           mintAmount,
           dummyProof,
@@ -168,7 +168,7 @@ describe('New Token Standard Mint Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.mintSideloadDisabled(user, mintAmount);
+        await tokenContract.mint(user, mintAmount);
       });
       await tx.prove();
       await tx.sign(signers).send().wait();
@@ -273,7 +273,7 @@ describe('New Token Standard Mint Tests', () => {
     try {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user,
           mintAmount,
           proof ?? dummyProof,
@@ -441,7 +441,7 @@ describe('New Token Standard Mint Tests', () => {
       try {
         const tx = await Mina.transaction({ sender: user2, fee }, async () => {
           AccountUpdate.fundNewAccount(user2, 2);
-          await tokenContract.mint(
+          await tokenContract.mintWithProof(
             tokenContract.address,
             UInt64.from(200),
             dummyProof,
@@ -870,7 +870,7 @@ describe('New Token Standard Mint Tests', () => {
       const burnTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.burn(
+          await tokenContract.burnWithProof(
             user2,
             UInt64.from(100),
             dynamicProof,
@@ -944,7 +944,7 @@ describe('New Token Standard Mint Tests', () => {
       const transfersTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.transferCustom(
+          await tokenContract.transferCustomWithProof(
             user1,
             user2,
             UInt64.from(100),
@@ -952,7 +952,7 @@ describe('New Token Standard Mint Tests', () => {
             dummyVkey,
             vKeyMap
           );
-          await tokenContract.transferCustom(
+          await tokenContract.transferCustomWithProof(
             user2,
             user1,
             UInt64.from(100),

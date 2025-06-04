@@ -34,7 +34,7 @@ import {
   program2,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard Burn Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -101,7 +101,7 @@ describe('New Token Standard Burn Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.burn(
+        await tokenContract.burnWithProof(
           user,
           burnAmount,
           dummyProof,
@@ -212,7 +212,7 @@ describe('New Token Standard Burn Tests', () => {
     try {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
-        await tokenContract.burn(
+        await tokenContract.burnWithProof(
           user,
           burnAmount,
           proof ?? dummyProof,
@@ -244,7 +244,7 @@ describe('New Token Standard Burn Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.burnSideloadDisabled(user, burnAmount);
+        await tokenContract.burn(user, burnAmount);
       });
       await tx.prove();
       await tx.sign(signers).send().wait();
@@ -300,7 +300,7 @@ describe('New Token Standard Burn Tests', () => {
       const mintAmount = UInt64.from(1000);
       const tx = await Mina.transaction({ sender: user1, fee }, async () => {
         AccountUpdate.fundNewAccount(user1, 3);
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user1,
           mintAmount,
           dummyProof,
@@ -308,7 +308,7 @@ describe('New Token Standard Burn Tests', () => {
           vKeyMap
         );
 
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user2,
           mintAmount,
           dummyProof,
@@ -374,7 +374,7 @@ describe('New Token Standard Burn Tests', () => {
       try {
         const tx = await Mina.transaction({ sender: user2, fee }, async () => {
           AccountUpdate.fundNewAccount(user2, 2);
-          await tokenContract.burn(
+          await tokenContract.burnWithProof(
             tokenContract.address,
             UInt64.from(100),
             dummyProof,
@@ -830,7 +830,7 @@ describe('New Token Standard Burn Tests', () => {
       const burnTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.burn(
+          await tokenContract.burnWithProof(
             user2,
             UInt64.from(150),
             dynamicProof,

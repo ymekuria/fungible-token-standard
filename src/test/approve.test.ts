@@ -40,7 +40,7 @@ import {
   PublicOutputs,
 } from '../side-loaded/program.eg.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('New Token Standard ApproveBase Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -158,7 +158,7 @@ describe('New Token Standard ApproveBase Tests', () => {
           fee,
         },
         async () => {
-          await tokenContract.approveAccountUpdatesCustom(
+          await tokenContract.approveAccountUpdatesCustomWithProof(
             [updateSend, updateReceive],
             proof ?? dummyProof,
             vKey ?? dummyVkey,
@@ -212,7 +212,7 @@ describe('New Token Standard ApproveBase Tests', () => {
           fee,
         },
         async () => {
-          await tokenContract.approveAccountUpdatesSideloadDisabled([
+          await tokenContract.approveAccountUpdatesCustom([
             updateSend,
             updateReceive,
           ]);
@@ -276,7 +276,7 @@ describe('New Token Standard ApproveBase Tests', () => {
       const mintAmount = UInt64.from(1000);
       const tx = await Mina.transaction({ sender: user1, fee }, async () => {
         AccountUpdate.fundNewAccount(user1, 3);
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user1,
           mintAmount,
           dummyProof,
@@ -284,7 +284,7 @@ describe('New Token Standard ApproveBase Tests', () => {
           vKeyMap
         );
 
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user2,
           mintAmount,
           dummyProof,
@@ -305,7 +305,7 @@ describe('New Token Standard ApproveBase Tests', () => {
       const receiverBalanceBefore = await tokenContract.getBalanceOf(user3);
       const tx = await Mina.transaction({ sender: user2, fee }, async () => {
         AccountUpdate.fundNewAccount(user2, 1);
-        await tokenContract.transferCustom(
+        await tokenContract.transferCustomWithProof(
           user2,
           user3,
           transferAmount,
@@ -357,7 +357,7 @@ describe('New Token Standard ApproveBase Tests', () => {
           fee,
         },
         async () => {
-          await tokenContract.approveAccountUpdatesCustom(
+          await tokenContract.approveAccountUpdatesCustomWithProof(
             [updateSend, updateReceive],
             dummyProof,
             dummyVkey,
@@ -399,7 +399,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesCustom(
+            await tokenContract.approveAccountUpdatesCustomWithProof(
               [updateReceive, updateSend],
               dummyProof,
               dummyVkey,
@@ -428,7 +428,7 @@ describe('New Token Standard ApproveBase Tests', () => {
 
       const approveAccountUpdatesTx = async () => {
         await Mina.transaction(deployer, async () => {
-          await tokenContract.approveAccountUpdatesCustom(
+          await tokenContract.approveAccountUpdatesCustomWithProof(
             [updateSend, updateReceive],
             dummyProof,
             dummyVkey,
@@ -460,7 +460,7 @@ describe('New Token Standard ApproveBase Tests', () => {
           },
           async () => {
             AccountUpdate.fundNewAccount(user2, 1);
-            await tokenContract.approveAccountUpdatesCustom(
+            await tokenContract.approveAccountUpdatesCustomWithProof(
               [updateSend, updateReceive],
               dummyProof,
               dummyVkey,
@@ -496,7 +496,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesCustom(
+            await tokenContract.approveAccountUpdatesCustomWithProof(
               [updateSend, updateReceive],
               dummyProof,
               dummyVkey,
@@ -532,7 +532,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesCustom(
+            await tokenContract.approveAccountUpdatesCustomWithProof(
               [updateSend, updateReceive],
               dummyProof,
               dummyVkey,
@@ -568,7 +568,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesSideloadDisabled([
+            await tokenContract.approveAccountUpdatesCustom([
               updateSend,
               updateReceive,
             ]);
@@ -601,7 +601,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesSideloadDisabled([
+            await tokenContract.approveAccountUpdatesCustom([
               updateReceive,
               updateSend,
             ]);
@@ -628,7 +628,7 @@ describe('New Token Standard ApproveBase Tests', () => {
 
       const approveAccountUpdatesTx = async () => {
         await Mina.transaction(deployer, async () => {
-          await tokenContract.approveAccountUpdatesSideloadDisabled([
+          await tokenContract.approveAccountUpdatesCustom([
             updateSend,
             updateReceive,
           ]);
@@ -658,7 +658,7 @@ describe('New Token Standard ApproveBase Tests', () => {
           },
           async () => {
             AccountUpdate.fundNewAccount(user2, 1);
-            await tokenContract.approveAccountUpdatesSideloadDisabled([
+            await tokenContract.approveAccountUpdatesCustom([
               updateSend,
               updateReceive,
             ]);
@@ -692,7 +692,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesSideloadDisabled([
+            await tokenContract.approveAccountUpdatesCustom([
               updateSend,
               updateReceive,
             ]);
@@ -726,7 +726,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveAccountUpdatesSideloadDisabled([
+            await tokenContract.approveAccountUpdatesCustom([
               updateSend,
               updateReceive,
             ]);
@@ -760,7 +760,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveBaseCustom(
+            await tokenContract.approveBaseCustomWithProof(
               AccountUpdateForest.fromFlatArray([updateSend]),
               dummyProof,
               dummyVkey,
@@ -793,7 +793,7 @@ describe('New Token Standard ApproveBase Tests', () => {
             fee,
           },
           async () => {
-            await tokenContract.approveBaseSideloadDisabled(
+            await tokenContract.approveBaseCustom(
               AccountUpdateForest.fromFlatArray([updateSend])
             );
           }
