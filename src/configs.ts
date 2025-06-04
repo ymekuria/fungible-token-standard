@@ -293,7 +293,78 @@ class AmountParams extends Struct({
  * Inherits all behavior from {@link AmountParams}, including serialization,
  * deserialization, and range validation.
  */
-class MintParams extends AmountParams {}
+class MintParams extends AmountParams {
+  /**
+   * Creates a new `MintParams` instance, ensuring consistency with the provided `MintConfig`.
+   *
+   * This factory method validates the `MintConfig` and initializes the `MintParams`
+   * fields (`fixedAmount`, `minAmount`, `maxAmount`) based on whether the config
+   * specifies a fixed or ranged amount minting.
+   *
+   * - If `config.fixedAmount` is true, `data.fixedAmount` is used, and `minAmount`/`maxAmount`
+   *   are set to 0 and 1 respectively (to pass `AmountParams.validate` if called).
+   * - If `config.rangedAmount` is true, `data.minAmount` and `data.maxAmount` are used,
+   *   and `fixedAmount` is set to 0.
+   *
+   * @param config - The `MintConfig` to adhere to.
+   * @param data - An object containing the amount values.
+   *   - `fixedAmount` (optional): The amount for fixed-amount minting. Required if `config.fixedAmount` is true.
+   *   - `minAmount` (optional): The minimum amount for ranged-amount minting. Required if `config.rangedAmount` is true.
+   *   - `maxAmount` (optional): The maximum amount for ranged-amount minting. Required if `config.rangedAmount` is true.
+   * @returns A new `MintParams` instance.
+   * @throws If `config` is invalid (e.g., both fixed and ranged are true).
+   * @throws If required `data` fields are missing for the specified config mode.
+   */
+  static create(
+    config: MintConfig,
+    data: { fixedAmount?: UInt64; minAmount?: UInt64; maxAmount?: UInt64 }
+  ): MintParams {
+    config.validate();
+
+    let initData: { fixedAmount: UInt64; minAmount: UInt64; maxAmount: UInt64 };
+
+    if (config.fixedAmount.toBoolean()) {
+      if (data.fixedAmount === undefined) {
+        throw new Error(
+          'MintConfig requires a fixed amount, but no `fixedAmount` was provided in params data.'
+        );
+      }
+      if (data.minAmount !== undefined || data.maxAmount !== undefined) {
+        throw new Error(
+          'MintConfig requires a fixed amount; `minAmount` and `maxAmount` should not be provided in params data.'
+        );
+      }
+      initData = {
+        fixedAmount: data.fixedAmount,
+        minAmount: UInt64.from(0),
+        maxAmount: UInt64.from(1),
+      };
+    } else {
+      if (data.minAmount === undefined || data.maxAmount === undefined) {
+        throw new Error(
+          'MintConfig requires a ranged amount, but `minAmount` or `maxAmount` was not provided in params data.'
+        );
+      }
+      if (data.fixedAmount !== undefined) {
+        throw new Error(
+          'MintConfig requires a ranged amount; `fixedAmount` should not be provided in params data.'
+        );
+      }
+      initData = {
+        fixedAmount: UInt64.from(0),
+        minAmount: data.minAmount,
+        maxAmount: data.maxAmount,
+      };
+      initData.minAmount.assertLessThan(
+        initData.maxAmount,
+        'Invalid amount range!'
+      );
+    }
+
+    const paramsInstance = new MintParams(initData);
+    return paramsInstance;
+  }
+}
 
 /**
  * `BurnParams` defines the parameters for token burning.
@@ -301,7 +372,78 @@ class MintParams extends AmountParams {}
  * Inherits all behavior from {@link AmountParams}, including serialization,
  * deserialization, and range validation.
  */
-class BurnParams extends AmountParams {}
+class BurnParams extends AmountParams {
+  /**
+   * Creates a new `BurnParams` instance, ensuring consistency with the provided `BurnConfig`.
+   *
+   * This factory method validates the `BurnConfig` and initializes the `BurnParams`
+   * fields (`fixedAmount`, `minAmount`, `maxAmount`) based on whether the config
+   * specifies a fixed or ranged amount burning.
+   *
+   * - If `config.fixedAmount` is true, `data.fixedAmount` is used, and `minAmount`/`maxAmount`
+   *   are set to 0 and 1 respectively (to pass `AmountParams.validate` if called).
+   * - If `config.rangedAmount` is true, `data.minAmount` and `data.maxAmount` are used,
+   *   and `fixedAmount` is set to 0.
+   *
+   * @param config - The `BurnConfig` to adhere to.
+   * @param data - An object containing the amount values.
+   *   - `fixedAmount` (optional): The amount for fixed-amount burning. Required if `config.fixedAmount` is true.
+   *   - `minAmount` (optional): The minimum amount for ranged-amount burning. Required if `config.rangedAmount` is true.
+   *   - `maxAmount` (optional): The maximum amount for ranged-amount burning. Required if `config.rangedAmount` is true.
+   * @returns A new `BurnParams` instance.
+   * @throws If `config` is invalid (e.g., both fixed and ranged are true).
+   * @throws If required `data` fields are missing for the specified config mode.
+   */
+  static create(
+    config: BurnConfig,
+    data: { fixedAmount?: UInt64; minAmount?: UInt64; maxAmount?: UInt64 }
+  ): BurnParams {
+    config.validate();
+
+    let initData: { fixedAmount: UInt64; minAmount: UInt64; maxAmount: UInt64 };
+
+    if (config.fixedAmount.toBoolean()) {
+      if (data.fixedAmount === undefined) {
+        throw new Error(
+          'BurnConfig requires a fixed amount, but no `fixedAmount` was provided in params data.'
+        );
+      }
+      if (data.minAmount !== undefined || data.maxAmount !== undefined) {
+        throw new Error(
+          'BurnConfig requires a fixed amount; `minAmount` and `maxAmount` should not be provided in params data.'
+        );
+      }
+      initData = {
+        fixedAmount: data.fixedAmount,
+        minAmount: UInt64.from(0),
+        maxAmount: UInt64.from(1),
+      };
+    } else {
+      if (data.minAmount === undefined || data.maxAmount === undefined) {
+        throw new Error(
+          'BurnConfig requires a ranged amount, but `minAmount` or `maxAmount` was not provided in params data.'
+        );
+      }
+      if (data.fixedAmount !== undefined) {
+        throw new Error(
+          'BurnConfig requires a ranged amount; `fixedAmount` should not be provided in params data.'
+        );
+      }
+      initData = {
+        fixedAmount: UInt64.from(0),
+        minAmount: data.minAmount,
+        maxAmount: data.maxAmount,
+      };
+      initData.minAmount.assertLessThan(
+        initData.maxAmount,
+        'Invalid amount range!'
+      );
+    }
+
+    const paramsInstance = new BurnParams(initData);
+    return paramsInstance;
+  }
+}
 
 /**
  * `DynamicProofConfig` defines a generic configuration to control and verify constraints for side-loaded proofs in token operations.
