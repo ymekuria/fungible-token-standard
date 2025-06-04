@@ -9,7 +9,11 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
+import {
+  FungibleToken,
+  FungibleTokenErrors,
+  VKeyMerkleMap,
+} from '../NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -29,6 +33,12 @@ import {
   SideloadedProof,
   program2,
 } from '../side-loaded/program.eg.js';
+import {
+  CONFIG_PROPERTIES,
+  PARAMS_PROPERTIES,
+  ConfigProperty,
+  ParamsProperty,
+} from './constants.js';
 
 const proofsEnabled = false;
 
@@ -166,6 +176,84 @@ describe('New Token Standard Burn Tests', () => {
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
     } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnParamsPropertyTx(
+    user: PublicKey,
+    key: ParamsProperty,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case PARAMS_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateBurnFixedAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MIN_AMOUNT:
+            await tokenContract.updateBurnMinAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MAX_AMOUNT:
+            await tokenContract.updateBurnMaxAmount(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedBurnParams.get();
+      const params = BurnParams.unpack(packedParams);
+      expect(params[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateBurnConfigPropertyTx(
+    user: PublicKey,
+    key: ConfigProperty,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case CONFIG_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateBurnFixedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.RANGED_AMOUNT:
+            await tokenContract.updateBurnRangedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.UNAUTHORIZED:
+            await tokenContract.updateBurnUnauthorizedConfig(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
+      expect(burnConfigAfter[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
       expect((error as Error).message).toContain(expectedErrorMessage);
     }
   }
@@ -554,10 +642,12 @@ describe('New Token Standard Burn Tests', () => {
       const originalRangedAmount = burnConfigBefore.rangedAmount;
 
       const newFixedAmountValue = Bool(true);
-      await updateBurnFixedAmountConfigTx(user2, newFixedAmountValue, [
-        user2.key,
-        tokenAdmin.key,
-      ]);
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
 
       const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
       const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
@@ -578,8 +668,9 @@ describe('New Token Standard Burn Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateBurnFixedAmountConfigTx(
+      await updateBurnConfigPropertyTx(
         user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
         attemptFixedAmountValue,
         [user2.key],
         expectedErrorMessage
@@ -599,10 +690,12 @@ describe('New Token Standard Burn Tests', () => {
       const originalFixedAmount = burnConfigBefore.fixedAmount;
       const originalUnauthorized = burnConfigBefore.unauthorized;
       const newRangedAmountValue = Bool(false);
-      await updateBurnRangedAmountConfigTx(user2, newRangedAmountValue, [
-        user2.key,
-        tokenAdmin.key,
-      ]);
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
+        newRangedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
 
       const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
       const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
@@ -623,8 +716,9 @@ describe('New Token Standard Burn Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateBurnRangedAmountConfigTx(
+      await updateBurnConfigPropertyTx(
         user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
         attemptRangedAmountValue,
         [user2.key],
         expectedErrorMessage
@@ -645,10 +739,12 @@ describe('New Token Standard Burn Tests', () => {
       const originalRangedAmount = burnConfigBefore.rangedAmount;
 
       const newUnauthorizedValue = Bool(true);
-      await updateBurnUnauthorizedConfigTx(user2, newUnauthorizedValue, [
-        user2.key,
-        tokenAdmin.key,
-      ]);
+      await updateBurnConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
+        newUnauthorizedValue,
+        [user2.key, tokenAdmin.key]
+      );
 
       const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
       const burnConfigAfter = BurnConfig.unpack(packedConfigsAfter);
@@ -669,8 +765,9 @@ describe('New Token Standard Burn Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateBurnUnauthorizedConfigTx(
+      await updateBurnConfigPropertyTx(
         user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
         attemptUnauthorizedValue,
         [user2.key],
         expectedErrorMessage
@@ -725,10 +822,12 @@ describe('New Token Standard Burn Tests', () => {
 
     it('should update burn fixed amount via field-specific function', async () => {
       const newFixedAmount = UInt64.from(150);
-      await updateBurnFixedAmountTx(user1, newFixedAmount, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmount,
+        [user1.key, tokenAdmin.key]
+      );
 
       const paramsAfterUpdate = BurnParams.unpack(
         tokenContract.packedBurnParams.get()
@@ -750,8 +849,9 @@ describe('New Token Standard Burn Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateBurnFixedAmountTx(
+      await updateBurnParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
         newFixedAmountAttempt,
         [user1.key],
         expectedErrorMessage
@@ -775,10 +875,12 @@ describe('New Token Standard Burn Tests', () => {
       const originalMaxAmount = paramsBeforeUpdate.maxAmount;
 
       const newMinAmount = UInt64.from(100);
-      await updateBurnMinAmountTx(user1, newMinAmount, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        newMinAmount,
+        [user1.key, tokenAdmin.key]
+      );
 
       const paramsAfterUpdate = BurnParams.unpack(
         tokenContract.packedBurnParams.get()
@@ -800,8 +902,9 @@ describe('New Token Standard Burn Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateBurnMinAmountTx(
+      await updateBurnParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
         newMinAmountAttempt,
         [user1.key],
         expectedErrorMessage
@@ -826,8 +929,9 @@ describe('New Token Standard Burn Tests', () => {
       const invalidNewMinAmount = originalMaxAmount.add(100);
       const expectedErrorMessage = 'Invalid amount range!';
 
-      await updateBurnMinAmountTx(
+      await updateBurnParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
         invalidNewMinAmount,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
@@ -849,10 +953,12 @@ describe('New Token Standard Burn Tests', () => {
       const originalMinAmount = paramsBeforeUpdate.minAmount;
 
       const newMaxAmount = UInt64.from(850);
-      await updateBurnMaxAmountTx(user1, newMaxAmount, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateBurnParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        newMaxAmount,
+        [user1.key, tokenAdmin.key]
+      );
 
       const paramsAfterUpdate = BurnParams.unpack(
         tokenContract.packedBurnParams.get()
@@ -874,8 +980,9 @@ describe('New Token Standard Burn Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateBurnMaxAmountTx(
+      await updateBurnParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
         newMaxAmountAttempt,
         [user1.key],
         expectedErrorMessage
@@ -900,8 +1007,9 @@ describe('New Token Standard Burn Tests', () => {
       const invalidNewMaxAmount = originalMinAmount.sub(10);
       const expectedErrorMessage = 'Invalid amount range!';
 
-      await updateBurnMaxAmountTx(
+      await updateBurnParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
         invalidNewMaxAmount,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage

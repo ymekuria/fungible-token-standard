@@ -29,6 +29,12 @@ import {
   SideloadedProof,
   program2,
 } from '../side-loaded/program.eg.js';
+import {
+  CONFIG_PROPERTIES,
+  PARAMS_PROPERTIES,
+  ConfigProperty,
+  ParamsProperty,
+} from './constants.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
 const proofsEnabled = false;
@@ -201,6 +207,84 @@ describe('New Token Standard Mint Tests', () => {
       if (expectedErrorMessage)
         throw new Error('Test should have failed but didnt!');
     } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintParamsPropertyTx(
+    user: PublicKey,
+    key: ParamsProperty,
+    value: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case PARAMS_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateMintFixedAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MIN_AMOUNT:
+            await tokenContract.updateMintMinAmount(value);
+            break;
+          case PARAMS_PROPERTIES.MAX_AMOUNT:
+            await tokenContract.updateMintMaxAmount(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedParams = tokenContract.packedMintParams.get();
+      const params = MintParams.unpack(packedParams);
+      expect(params[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function updateMintConfigPropertyTx(
+    user: PublicKey,
+    key: ConfigProperty,
+    value: Bool,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        switch (key) {
+          case CONFIG_PROPERTIES.FIXED_AMOUNT:
+            await tokenContract.updateMintFixedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.RANGED_AMOUNT:
+            await tokenContract.updateMintRangedAmountConfig(value);
+            break;
+          case CONFIG_PROPERTIES.UNAUTHORIZED:
+            await tokenContract.updateMintUnauthorizedConfig(value);
+            break;
+        }
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
+      const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
+      expect(mintConfigAfter[key]).toEqual(value);
+
+      if (expectedErrorMessage) {
+        throw new Error(
+          `Test should have failed with '${expectedErrorMessage}' but didnt!`
+        );
+      }
+    } catch (error: unknown) {
+      if (!expectedErrorMessage) throw error;
       expect((error as Error).message).toContain(expectedErrorMessage);
     }
   }
@@ -635,10 +719,12 @@ describe('New Token Standard Mint Tests', () => {
       const originalRangedAmount = mintConfigBefore.rangedAmount;
 
       const newFixedAmountValue = Bool(true);
-      await updateMintFixedAmountConfigTx(user2, newFixedAmountValue, [
-        user2.key,
-        tokenAdmin.key,
-      ]);
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
 
       const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
       const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
@@ -659,8 +745,9 @@ describe('New Token Standard Mint Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateMintFixedAmountConfigTx(
+      await updateMintConfigPropertyTx(
         user2,
+        CONFIG_PROPERTIES.FIXED_AMOUNT,
         attemptFixedAmountValue,
         [user2.key],
         expectedErrorMessage
@@ -680,10 +767,12 @@ describe('New Token Standard Mint Tests', () => {
       const originalFixedAmount = mintConfigBefore.fixedAmount;
       const originalUnauthorized = mintConfigBefore.unauthorized;
       const newRangedAmountValue = Bool(false);
-      await updateMintRangedAmountConfigTx(user2, newRangedAmountValue, [
-        user2.key,
-        tokenAdmin.key,
-      ]);
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
+        newRangedAmountValue,
+        [user2.key, tokenAdmin.key]
+      );
 
       const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
       const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
@@ -704,8 +793,9 @@ describe('New Token Standard Mint Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateMintRangedAmountConfigTx(
+      await updateMintConfigPropertyTx(
         user2,
+        CONFIG_PROPERTIES.RANGED_AMOUNT,
         attemptRangedAmountValue,
         [user2.key],
         expectedErrorMessage
@@ -726,10 +816,12 @@ describe('New Token Standard Mint Tests', () => {
       const originalRangedAmount = mintConfigBefore.rangedAmount;
 
       const newUnauthorizedValue = Bool(true);
-      await updateMintUnauthorizedConfigTx(user2, newUnauthorizedValue, [
-        user2.key,
-        tokenAdmin.key,
-      ]);
+      await updateMintConfigPropertyTx(
+        user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
+        newUnauthorizedValue,
+        [user2.key, tokenAdmin.key]
+      );
 
       const packedConfigsAfter = tokenContract.packedAmountConfigs.get();
       const mintConfigAfter = MintConfig.unpack(packedConfigsAfter);
@@ -750,8 +842,9 @@ describe('New Token Standard Mint Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateMintUnauthorizedConfigTx(
+      await updateMintConfigPropertyTx(
         user2,
+        CONFIG_PROPERTIES.UNAUTHORIZED,
         attemptUnauthorizedValue,
         [user2.key],
         expectedErrorMessage
@@ -806,10 +899,12 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should update mint fixed amount via field-specific function', async () => {
       const newFixedAmount = UInt64.from(600);
-      await updateMintFixedAmountTx(user1, newFixedAmount, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
+        newFixedAmount,
+        [user1.key, tokenAdmin.key]
+      );
 
       const paramsAfterUpdate = MintParams.unpack(
         tokenContract.packedMintParams.get()
@@ -832,8 +927,9 @@ describe('New Token Standard Mint Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateMintFixedAmountTx(
+      await updateMintParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.FIXED_AMOUNT,
         newFixedAmountAttempt,
         [user1.key],
         expectedErrorMessage
@@ -857,10 +953,12 @@ describe('New Token Standard Mint Tests', () => {
       const originalMaxAmount = paramsBeforeUpdate.maxAmount;
 
       const newMinAmount = UInt64.from(50);
-      await updateMintMinAmountTx(user1, newMinAmount, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
+        newMinAmount,
+        [user1.key, tokenAdmin.key]
+      );
 
       const paramsAfterUpdate = MintParams.unpack(
         tokenContract.packedMintParams.get()
@@ -882,8 +980,9 @@ describe('New Token Standard Mint Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateMintMinAmountTx(
+      await updateMintParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
         newMinAmountAttempt,
         [user1.key], // No admin signature
         expectedErrorMessage
@@ -908,8 +1007,9 @@ describe('New Token Standard Mint Tests', () => {
       const invalidNewMinAmount = originalMaxAmount.add(100);
       const expectedErrorMessage = 'Invalid amount range!';
 
-      await updateMintMinAmountTx(
+      await updateMintParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MIN_AMOUNT,
         invalidNewMinAmount,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
@@ -931,10 +1031,12 @@ describe('New Token Standard Mint Tests', () => {
       const originalMinAmount = paramsBeforeUpdate.minAmount;
 
       const newMaxAmount = UInt64.from(1200);
-      await updateMintMaxAmountTx(user1, newMaxAmount, [
-        user1.key,
-        tokenAdmin.key,
-      ]);
+      await updateMintParamsPropertyTx(
+        user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
+        newMaxAmount,
+        [user1.key, tokenAdmin.key]
+      );
 
       const paramsAfterUpdate = MintParams.unpack(
         tokenContract.packedMintParams.get()
@@ -956,8 +1058,9 @@ describe('New Token Standard Mint Tests', () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
 
-      await updateMintMaxAmountTx(
+      await updateMintParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
         newMaxAmountAttempt,
         [user1.key],
         expectedErrorMessage
@@ -982,8 +1085,9 @@ describe('New Token Standard Mint Tests', () => {
       const invalidNewMaxAmount = originalMinAmount.sub(10);
       const expectedErrorMessage = 'Invalid amount range!';
 
-      await updateMintMaxAmountTx(
+      await updateMintParamsPropertyTx(
         user1,
+        PARAMS_PROPERTIES.MAX_AMOUNT,
         invalidNewMaxAmount,
         [user1.key, tokenAdmin.key],
         expectedErrorMessage
