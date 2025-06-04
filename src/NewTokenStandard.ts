@@ -487,11 +487,7 @@ class FungibleToken extends TokenContract {
    * @throws {Error} If either the from or to account is the circulation account
    */
   @method
-  async transferSideloadDisabled(
-    from: PublicKey,
-    to: PublicKey,
-    amount: UInt64
-  ) {
+  async transferCustom(from: PublicKey, to: PublicKey, amount: UInt64) {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const transferDynamicProofConfig = TransferDynamicProofConfig.unpack(
