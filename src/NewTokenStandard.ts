@@ -259,30 +259,6 @@ class FungibleToken extends TokenContract {
     vk: VerificationKey, // provide the full verification key since only the hash is stored.
     vKeyMap: VKeyMerkleMap
   ): Promise<AccountUpdate> {
-    const accountUpdate = this.internal.mint({ address: recipient, amount });
-    accountUpdate.body.useFullCommitment;
-
-    const packedMintParams = this.packedMintParams.getAndRequireEquals();
-    const mintParams = MintParams.unpack(packedMintParams);
-
-    const canMint = await this.canMint(accountUpdate, mintParams);
-    canMint.assertTrue(FungibleTokenErrors.noPermissionToMint);
-
-    recipient
-      .equals(this.address)
-      .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-
-    this.approve(accountUpdate);
-
-    this.emitEvent('Mint', new MintEvent({ recipient, amount }));
-
-    const circulationUpdate = AccountUpdate.create(
-      this.address,
-      this.deriveTokenId()
-    );
-
-    circulationUpdate.balanceChange = Int64.fromUnsigned(amount);
-
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const mintDynamicProofConfig = MintDynamicProofConfig.unpack(
@@ -298,7 +274,7 @@ class FungibleToken extends TokenContract {
       OperationKeys.Mint
     );
 
-    return accountUpdate;
+    return await this.internalMint(recipient, amount);
   }
 
   /**
@@ -323,6 +299,17 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionForSideloadDisabledOperation
     );
 
+    return await this.internalMint(recipient, amount);
+  }
+
+  /**
+   * Internal mint implementation shared by both mint() and mintWithProof().
+   * Contains the core minting logic without proof verification.
+   */
+  private async internalMint(
+    recipient: PublicKey,
+    amount: UInt64
+  ): Promise<AccountUpdate> {
     const accountUpdate = this.internal.mint({ address: recipient, amount });
     accountUpdate.body.useFullCommitment;
 
@@ -358,24 +345,6 @@ class FungibleToken extends TokenContract {
     vk: VerificationKey,
     vKeyMap: VKeyMerkleMap
   ): Promise<AccountUpdate> {
-    const accountUpdate = this.internal.burn({ address: from, amount });
-
-    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
-    const burnParams = BurnParams.unpack(packedBurnParams);
-
-    const canBurn = await this.canBurn(accountUpdate, burnParams);
-    canBurn.assertTrue(FungibleTokenErrors.noPermissionToBurn);
-
-    const circulationUpdate = AccountUpdate.create(
-      this.address,
-      this.deriveTokenId()
-    );
-    from
-      .equals(this.address)
-      .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-    circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
-    this.emitEvent('Burn', new BurnEvent({ from, amount }));
-
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const burnDynamicProofConfig = BurnDynamicProofConfig.unpack(
@@ -391,7 +360,7 @@ class FungibleToken extends TokenContract {
       OperationKeys.Burn
     );
 
-    return accountUpdate;
+    return await this.internalBurn(from, amount);
   }
 
   /**
@@ -415,6 +384,18 @@ class FungibleToken extends TokenContract {
     burnDynamicProofConfig.shouldVerify.assertFalse(
       FungibleTokenErrors.noPermissionForSideloadDisabledOperation
     );
+
+    return await this.internalBurn(from, amount);
+  }
+
+  /**
+   * Internal burn implementation shared by both burn() and burnWithProof().
+   * Contains the core burning logic without proof verification.
+   */
+  private async internalBurn(
+    from: PublicKey,
+    amount: UInt64
+  ): Promise<AccountUpdate> {
     const accountUpdate = this.internal.burn({ address: from, amount });
 
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
@@ -430,7 +411,6 @@ class FungibleToken extends TokenContract {
     from
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-
     circulationUpdate.balanceChange = Int64.fromUnsigned(amount).neg();
     this.emitEvent('Burn', new BurnEvent({ from, amount }));
 
@@ -452,14 +432,6 @@ class FungibleToken extends TokenContract {
     vk: VerificationKey,
     vKeyMap: VKeyMerkleMap
   ) {
-    from
-      .equals(this.address)
-      .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-    to.equals(this.address).assertFalse(
-      FungibleTokenErrors.noTransferFromCirculation
-    );
-    this.internal.send({ from, to, amount });
-
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const transferDynamicProofConfig = TransferDynamicProofConfig.unpack(
@@ -474,6 +446,8 @@ class FungibleToken extends TokenContract {
       vKeyMap,
       OperationKeys.Transfer
     );
+
+    this.internalTransfer(from, to, amount);
   }
 
   /**
@@ -497,6 +471,14 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionForSideloadDisabledOperation
     );
 
+    this.internalTransfer(from, to, amount);
+  }
+
+  /**
+   * Internal transfer implementation shared by both transferCustom() and transferCustomWithProof().
+   * Contains the core transfer logic without proof verification.
+   */
+  private internalTransfer(from: PublicKey, to: PublicKey, amount: UInt64) {
     from
       .equals(this.address)
       .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
@@ -561,36 +543,6 @@ class FungibleToken extends TokenContract {
     vk: VerificationKey,
     vKeyMap: VKeyMerkleMap
   ): Promise<void> {
-    let totalBalance = Int64.from(0);
-    this.forEachUpdate(updates, (update, usesToken) => {
-      // Make sure that the account permissions are not changed
-      this.checkPermissionsUpdate(update);
-      this.emitEventIf(
-        usesToken,
-        'BalanceChange',
-        new BalanceChangeEvent({
-          address: update.publicKey,
-          amount: update.balanceChange,
-        })
-      );
-      // Don't allow transfers to/from the account that's tracking circulation
-      update.publicKey
-        .equals(this.address)
-        .and(usesToken)
-        .assertFalse(FungibleTokenErrors.noTransferFromCirculation);
-
-      totalBalance = Provable.if(
-        usesToken,
-        totalBalance.add(update.balanceChange),
-        totalBalance
-      );
-      totalBalance.isPositive().assertFalse(FungibleTokenErrors.flashMinting);
-    });
-    totalBalance.assertEquals(
-      Int64.zero,
-      FungibleTokenErrors.unbalancedTransaction
-    );
-
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
     const updatesDynamicProofConfig = UpdatesDynamicProofConfig.unpack(
@@ -605,6 +557,8 @@ class FungibleToken extends TokenContract {
       vKeyMap,
       OperationKeys.ApproveBase
     );
+
+    this.internalApproveBase(updates);
   }
 
   /**
@@ -661,6 +615,14 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionForSideloadDisabledOperation
     );
 
+    this.internalApproveBase(updates);
+  }
+
+  /**
+   * Internal approve base implementation shared by both approveBaseCustom() and approveBaseCustomWithProof().
+   * Contains the core approval logic without proof verification.
+   */
+  private internalApproveBase(updates: AccountUpdateForest): void {
     let totalBalance = Int64.from(0);
     this.forEachUpdate(updates, (update, usesToken) => {
       // Make sure that the account permissions are not changed
