@@ -620,13 +620,21 @@ class FungibleToken extends TokenContract {
     return Bool(true);
   }
 
-  private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
-    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
-    const mintConfig = MintConfig.unpack(packedConfigs);
+  /**
+   * Internal method to validate both permissions and amount constraints for mint/burn operations.
+   * @param accountUpdate - The account update to validate
+   * @param params - The parameters containing fixedAmount, minAmount, maxAmount
+   * @param config - The configuration containing unauthorized, fixedAmount, rangedAmount flags
+   * @returns Boolean indicating if the operation is allowed
+   */
+  private async validateAmountAndPermissions(
+    accountUpdate: AccountUpdate,
+    params: { fixedAmount: UInt64; minAmount: UInt64; maxAmount: UInt64 },
+    config: { unauthorized: Bool; fixedAmount: Bool; rangedAmount: Bool }
+  ): Promise<Bool> {
+    const { fixedAmount, minAmount, maxAmount } = params;
 
-    const { fixedAmount, minAmount, maxAmount } = mintParams;
-
-    await this.ensureAdminSignature(mintConfig.unauthorized.not());
+    await this.ensureAdminSignature(config.unauthorized.not());
 
     const magnitude = accountUpdate.body.balanceChange.magnitude;
 
@@ -636,38 +644,35 @@ class FungibleToken extends TokenContract {
     const upperBound = magnitude.lessThanOrEqual(maxAmount);
     const isInRange = lowerBound.and(upperBound);
 
-    const canMint = Provable.switch(
-      [mintConfig.fixedAmount, mintConfig.rangedAmount],
+    const canPerform = Provable.switch(
+      [config.fixedAmount, config.rangedAmount],
       Bool,
       [isFixed, isInRange]
     );
 
-    return canMint;
+    return canPerform;
+  }
+
+  private async canMint(accountUpdate: AccountUpdate, mintParams: MintParams) {
+    const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
+    const mintConfig = MintConfig.unpack(packedConfigs);
+
+    return await this.validateAmountAndPermissions(
+      accountUpdate,
+      mintParams,
+      mintConfig
+    );
   }
 
   private async canBurn(accountUpdate: AccountUpdate, burnParams: BurnParams) {
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const burnConfig = BurnConfig.unpack(packedConfigs);
 
-    const { fixedAmount, minAmount, maxAmount } = burnParams;
-
-    await this.ensureAdminSignature(burnConfig.unauthorized.not());
-
-    const magnitude = accountUpdate.body.balanceChange.magnitude;
-
-    const isFixed = magnitude.equals(fixedAmount);
-
-    const lowerBound = magnitude.greaterThanOrEqual(minAmount);
-    const upperBound = magnitude.lessThanOrEqual(maxAmount);
-    const isInRange = lowerBound.and(upperBound);
-
-    const canBurn = Provable.switch(
-      [burnConfig.fixedAmount, burnConfig.rangedAmount],
-      Bool,
-      [isFixed, isInRange]
+    return await this.validateAmountAndPermissions(
+      accountUpdate,
+      burnParams,
+      burnConfig
     );
-
-    return canBurn;
   }
 
   private async verifySideLoadedProof(
