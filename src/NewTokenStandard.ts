@@ -621,21 +621,26 @@ class FungibleToken extends TokenContract {
   }
 
   /**
-   * Internal method to validate both permissions and amount constraints for mint/burn operations.
+   * Checks if admin signature is required and ensures it's provided when needed.
+   * @param config - The configuration containing unauthorized flag
+   */
+  private async requiresAdminSignature(config: { unauthorized: Bool }) {
+    await this.ensureAdminSignature(config.unauthorized.not());
+  }
+
+  /**
+   * Validates that the balance change amount meets the configured constraints.
    * @param accountUpdate - The account update to validate
    * @param params - The parameters containing fixedAmount, minAmount, maxAmount
-   * @param config - The configuration containing unauthorized, fixedAmount, rangedAmount flags
-   * @returns Boolean indicating if the operation is allowed
+   * @param config - The configuration containing fixedAmount, rangedAmount flags
+   * @returns Boolean indicating if the amount is valid
    */
-  private async validateAmountAndPermissions(
+  private isValidBalanceChange(
     accountUpdate: AccountUpdate,
     params: { fixedAmount: UInt64; minAmount: UInt64; maxAmount: UInt64 },
-    config: { unauthorized: Bool; fixedAmount: Bool; rangedAmount: Bool }
-  ): Promise<Bool> {
+    config: { fixedAmount: Bool; rangedAmount: Bool }
+  ): Bool {
     const { fixedAmount, minAmount, maxAmount } = params;
-
-    await this.ensureAdminSignature(config.unauthorized.not());
-
     const magnitude = accountUpdate.body.balanceChange.magnitude;
 
     const isFixed = magnitude.equals(fixedAmount);
@@ -657,22 +662,16 @@ class FungibleToken extends TokenContract {
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const mintConfig = MintConfig.unpack(packedConfigs);
 
-    return await this.validateAmountAndPermissions(
-      accountUpdate,
-      mintParams,
-      mintConfig
-    );
+    await this.requiresAdminSignature(mintConfig);
+    return this.isValidBalanceChange(accountUpdate, mintParams, mintConfig);
   }
 
   private async canBurn(accountUpdate: AccountUpdate, burnParams: BurnParams) {
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const burnConfig = BurnConfig.unpack(packedConfigs);
 
-    return await this.validateAmountAndPermissions(
-      accountUpdate,
-      burnParams,
-      burnConfig
-    );
+    await this.requiresAdminSignature(burnConfig);
+    return this.isValidBalanceChange(accountUpdate, burnParams, burnConfig);
   }
 
   private async verifySideLoadedProof(
