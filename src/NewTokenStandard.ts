@@ -274,7 +274,7 @@ class FungibleToken extends TokenContract {
       OperationKeys.Mint
     );
 
-    return await this.internalMint(recipient, amount);
+    return await this.#internalMint(recipient, amount);
   }
 
   /**
@@ -299,14 +299,14 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionForSideloadDisabledOperation
     );
 
-    return await this.internalMint(recipient, amount);
+    return await this.#internalMint(recipient, amount);
   }
 
   /**
    * Internal mint implementation shared by both mint() and mintWithProof().
    * Contains the core minting logic without proof verification.
    */
-  private async internalMint(
+  async #internalMint(
     recipient: PublicKey,
     amount: UInt64
   ): Promise<AccountUpdate> {
@@ -360,7 +360,7 @@ class FungibleToken extends TokenContract {
       OperationKeys.Burn
     );
 
-    return await this.internalBurn(from, amount);
+    return await this.#internalBurn(from, amount);
   }
 
   /**
@@ -385,14 +385,14 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionForSideloadDisabledOperation
     );
 
-    return await this.internalBurn(from, amount);
+    return await this.#internalBurn(from, amount);
   }
 
   /**
    * Internal burn implementation shared by both burn() and burnWithProof().
    * Contains the core burning logic without proof verification.
    */
-  private async internalBurn(
+  async #internalBurn(
     from: PublicKey,
     amount: UInt64
   ): Promise<AccountUpdate> {
