@@ -559,6 +559,14 @@ class FungibleToken extends TokenContract {
     mintConfig.validate();
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     this.packedAmountConfigs.set(mintConfig.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Config,
+        category: OperationKeys.Mint,
+      })
+    );
   }
 
   @method
@@ -568,6 +576,14 @@ class FungibleToken extends TokenContract {
     burnConfig.validate();
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     this.packedAmountConfigs.set(burnConfig.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Config,
+        category: OperationKeys.Burn,
+      })
+    );
   }
 
   @method
@@ -576,6 +592,14 @@ class FungibleToken extends TokenContract {
     mintParams.validate();
 
     this.packedMintParams.set(mintParams.pack());
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Params,
+        category: OperationKeys.Mint,
+      })
+    );
   }
 
   @method
@@ -584,6 +608,14 @@ class FungibleToken extends TokenContract {
     burnParams.validate();
 
     this.packedBurnParams.set(burnParams.pack());
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Params,
+        category: OperationKeys.Burn,
+      })
+    );
   }
 
   @method
