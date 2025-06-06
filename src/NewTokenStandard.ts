@@ -32,6 +32,9 @@ import {
   UpdatesDynamicProofConfig,
   DynamicProofConfig,
   OperationKeys,
+  EventTypes,
+  ParameterTypes,
+  FlagTypes,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
