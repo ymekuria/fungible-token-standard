@@ -176,7 +176,10 @@ class FungibleToken extends TokenContract {
     permissions.setPermissions = Permissions.impossible();
     accountUpdate.account.permissions.set(permissions);
 
-    this.emitEvent('Initialization', new InitializationEvent({ admin, decimals }));
+    this.emitEvent(
+      'Initialization',
+      new InitializationEvent({ admin, decimals })
+    );
   }
 
   /** Update the verification key.
@@ -189,8 +192,11 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionToChangeAdmin
     );
     this.account.verificationKey.set(vk);
-    
-    this.emitEvent('VerificationKeyUpdate', new VerificationKeyUpdateEvent({ vKeyHash: vk.hash }));
+
+    this.emitEvent(
+      'VerificationKeyUpdate',
+      new VerificationKeyUpdateEvent({ vKeyHash: vk.hash })
+    );
   }
 
   /**
@@ -252,11 +258,18 @@ class FungibleToken extends TokenContract {
 
   @method
   async setAdmin(admin: PublicKey) {
+    const previousAdmin = this.admin.getAndRequireEquals();
     const canChangeAdmin = await this.canChangeAdmin(admin);
     canChangeAdmin.assertTrue(FungibleTokenErrors.noPermissionToChangeAdmin);
 
     this.admin.set(admin);
-    this.emitEvent('SetAdmin', new SetAdminEvent({ adminKey: admin }));
+    this.emitEvent(
+      'SetAdmin',
+      new SetAdminEvent({
+        previousAdmin,
+        newAdmin: admin,
+      })
+    );
   }
 
   @method.returns(AccountUpdate)
@@ -938,7 +951,8 @@ class FungibleToken extends TokenContract {
 }
 
 class SetAdminEvent extends Struct({
-  adminKey: PublicKey,
+  previousAdmin: PublicKey,
+  newAdmin: PublicKey,
 }) {}
 class MintEvent extends Struct({
   recipient: PublicKey,
