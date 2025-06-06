@@ -993,6 +993,30 @@ class VerificationKeyUpdateEvent extends Struct({
   vKeyHash: Field,
 }) {}
 
+class ConfigStructureUpdateEvent extends Struct({
+  updateType: Field, // EventTypes.Config or EventTypes.Params
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+}) {}
+
+class AmountValueUpdateEvent extends Struct({
+  parameterType: Field, // ParameterTypes.FixedAmount, MinAmount, or MaxAmount
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+  oldValue: UInt64,
+  newValue: UInt64,
+}) {}
+
+class DynamicProofConfigUpdateEvent extends Struct({
+  operationType: Field, // OperationKeys.Mint, Burn, Transfer, or ApproveBase
+  newConfig: Field, // The updated packed configuration
+}) {}
+
+class ConfigFlagUpdateEvent extends Struct({
+  flagType: Field, // FlagTypes.FixedAmount, RangedAmount, or Unauthorized
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+  oldValue: Bool,
+  newValue: Bool,
+}) {}
+
 // copied from: https://github.com/o1-labs/o1js/blob/6ebbc23710f6de023fea6d83dc93c5a914c571f2/src/lib/mina/token/token-contract.ts#L189
 function toForest(
   updates: (AccountUpdate | AccountUpdateTree)[]
