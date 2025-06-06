@@ -55,6 +55,10 @@ export {
   SideLoadedVKeyUpdateEvent,
   InitializationEvent,
   VerificationKeyUpdateEvent,
+  ConfigStructureUpdateEvent,
+  AmountValueUpdateEvent,
+  DynamicProofConfigUpdateEvent,
+  ConfigFlagUpdateEvent,
 };
 
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
@@ -98,6 +102,10 @@ class FungibleToken extends TokenContract {
     SideLoadedVKeyUpdate: SideLoadedVKeyUpdateEvent,
     Initialization: InitializationEvent,
     VerificationKeyUpdate: VerificationKeyUpdateEvent,
+    ConfigStructureUpdate: ConfigStructureUpdateEvent,
+    ConfigFlagUpdate: ConfigFlagUpdateEvent,
+    AmountValueUpdate: AmountValueUpdateEvent,
+    DynamicProofConfigUpdate: DynamicProofConfigUpdateEvent,
   };
 
   private async ensureAdminSignature(condition: Bool) {
