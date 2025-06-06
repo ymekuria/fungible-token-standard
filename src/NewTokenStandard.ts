@@ -1035,10 +1035,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = MintConfig.unpack(packedConfigs);
+    const oldValue = config.fixedAmount;
     config.fixedAmount = value;
     config.rangedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.FixedAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1046,10 +1057,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = MintConfig.unpack(packedConfigs);
+    const oldValue = config.rangedAmount;
     config.rangedAmount = value;
     config.fixedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.RangedAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1057,9 +1079,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = MintConfig.unpack(packedConfigs);
+    const oldValue = config.unauthorized;
     config.unauthorized = value;
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.Unauthorized,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1067,10 +1100,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = BurnConfig.unpack(packedConfigs);
+    const oldValue = config.fixedAmount;
     config.fixedAmount = value;
     config.rangedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.FixedAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1078,10 +1122,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = BurnConfig.unpack(packedConfigs);
+    const oldValue = config.rangedAmount;
     config.rangedAmount = value;
     config.fixedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.RangedAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1089,9 +1144,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = BurnConfig.unpack(packedConfigs);
+    const oldValue = config.unauthorized;
     config.unauthorized = value;
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.Unauthorized,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 }
 
