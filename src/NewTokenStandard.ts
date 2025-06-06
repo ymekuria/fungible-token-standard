@@ -46,9 +46,12 @@ export {
   SetAdminEvent,
   MintEvent,
   BurnEvent,
+  TransferEvent,
   BalanceChangeEvent,
   VKeyMerkleMap,
   SideLoadedVKeyUpdateEvent,
+  InitializationEvent,
+  VerificationKeyUpdateEvent,
 };
 
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
@@ -87,8 +90,11 @@ class FungibleToken extends TokenContract {
     SetAdmin: SetAdminEvent,
     Mint: MintEvent,
     Burn: BurnEvent,
+    Transfer: TransferEvent,
     BalanceChange: BalanceChangeEvent,
     SideLoadedVKeyUpdate: SideLoadedVKeyUpdateEvent,
+    Initialization: InitializationEvent,
+    VerificationKeyUpdate: VerificationKeyUpdateEvent,
   };
 
   private async ensureAdminSignature(condition: Bool) {
@@ -169,6 +175,8 @@ class FungibleToken extends TokenContract {
     permissions.send = Permissions.none();
     permissions.setPermissions = Permissions.impossible();
     accountUpdate.account.permissions.set(permissions);
+
+    this.emitEvent('Initialization', new InitializationEvent({ admin, decimals }));
   }
 
   /** Update the verification key.
@@ -181,6 +189,8 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionToChangeAdmin
     );
     this.account.verificationKey.set(vk);
+    
+    this.emitEvent('VerificationKeyUpdate', new VerificationKeyUpdateEvent({ vKeyHash: vk.hash }));
   }
 
   /**
@@ -378,6 +388,8 @@ class FungibleToken extends TokenContract {
       vKeyMap,
       OperationKeys.Transfer
     );
+
+    this.emitEvent('Transfer', new TransferEvent({ from, to, amount }));
   }
 
   private checkPermissionsUpdate(update: AccountUpdate) {
@@ -947,6 +959,21 @@ class SideLoadedVKeyUpdateEvent extends Struct({
   operationKey: Field,
   newVKeyHash: Field,
   newMerkleRoot: Field,
+}) {}
+
+class TransferEvent extends Struct({
+  from: PublicKey,
+  to: PublicKey,
+  amount: UInt64,
+}) {}
+
+class InitializationEvent extends Struct({
+  admin: PublicKey,
+  decimals: UInt8,
+}) {}
+
+class VerificationKeyUpdateEvent extends Struct({
+  vKeyHash: Field,
 }) {}
 
 // copied from: https://github.com/o1-labs/o1js/blob/6ebbc23710f6de023fea6d83dc93c5a914c571f2/src/lib/mina/token/token-contract.ts#L189
