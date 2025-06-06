@@ -627,8 +627,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      mintDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = mintDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.Mint,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -641,8 +650,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      burnDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = burnDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.Burn,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -655,8 +673,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      transferDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = transferDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.Transfer,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -669,8 +696,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      updatesDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = updatesDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.ApproveBase,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
