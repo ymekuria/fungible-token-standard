@@ -911,8 +911,19 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const params = MintParams.unpack(packedMintParams);
+    const oldValue = params.fixedAmount;
     params.fixedAmount = value;
     this.packedMintParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.FixedAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -920,9 +931,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const params = MintParams.unpack(packedMintParams);
+    const oldValue = params.minAmount;
     params.minAmount = value;
     params.validate();
     this.packedMintParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MinAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -930,9 +952,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const params = MintParams.unpack(packedMintParams);
+    const oldValue = params.maxAmount;
     params.maxAmount = value;
     params.validate();
     this.packedMintParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MaxAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -940,8 +973,19 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
     const params = BurnParams.unpack(packedBurnParams);
+    const oldValue = params.fixedAmount;
     params.fixedAmount = value;
     this.packedBurnParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.FixedAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -949,9 +993,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
     const params = BurnParams.unpack(packedBurnParams);
+    const oldValue = params.minAmount;
     params.minAmount = value;
     params.validate();
     this.packedBurnParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MinAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -959,9 +1014,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
     const params = BurnParams.unpack(packedBurnParams);
+    const oldValue = params.maxAmount;
     params.maxAmount = value;
     params.validate();
     this.packedBurnParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MaxAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
