@@ -42,7 +42,7 @@ export const ALL_PARAMS_PROPERTIES = Object.values(
 ) as ParamsProperty[];
 
 /**
- * Test-specific error messages that are not part of the core token standard
+ * Test-specific error messages that are not part of the core token standard.
  * These include framework errors, proof system errors, and test-specific scenarios
  */
 export const TEST_ERROR_MESSAGES = {
