@@ -32,6 +32,9 @@ import {
   UpdatesDynamicProofConfig,
   DynamicProofConfig,
   OperationKeys,
+  EventTypes,
+  ParameterTypes,
+  FlagTypes,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -46,9 +49,16 @@ export {
   SetAdminEvent,
   MintEvent,
   BurnEvent,
+  TransferEvent,
   BalanceChangeEvent,
   VKeyMerkleMap,
   SideLoadedVKeyUpdateEvent,
+  InitializationEvent,
+  VerificationKeyUpdateEvent,
+  ConfigStructureUpdateEvent,
+  AmountValueUpdateEvent,
+  DynamicProofConfigUpdateEvent,
+  ConfigFlagUpdateEvent,
 };
 
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
@@ -89,8 +99,15 @@ class FungibleToken extends TokenContract {
     SetAdmin: SetAdminEvent,
     Mint: MintEvent,
     Burn: BurnEvent,
+    Transfer: TransferEvent,
     BalanceChange: BalanceChangeEvent,
     SideLoadedVKeyUpdate: SideLoadedVKeyUpdateEvent,
+    Initialization: InitializationEvent,
+    VerificationKeyUpdate: VerificationKeyUpdateEvent,
+    ConfigStructureUpdate: ConfigStructureUpdateEvent,
+    ConfigFlagUpdate: ConfigFlagUpdateEvent,
+    AmountValueUpdate: AmountValueUpdateEvent,
+    DynamicProofConfigUpdate: DynamicProofConfigUpdateEvent,
   };
 
   private async ensureAdminSignature(condition: Bool) {
@@ -171,6 +188,11 @@ class FungibleToken extends TokenContract {
     permissions.send = Permissions.none();
     permissions.setPermissions = Permissions.impossible();
     accountUpdate.account.permissions.set(permissions);
+
+    this.emitEvent(
+      'Initialization',
+      new InitializationEvent({ admin, decimals })
+    );
   }
 
   /** Update the verification key.
@@ -183,6 +205,11 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noPermissionToChangeAdmin
     );
     this.account.verificationKey.set(vk);
+
+    this.emitEvent(
+      'VerificationKeyUpdate',
+      new VerificationKeyUpdateEvent({ vKeyHash: vk.hash })
+    );
   }
 
   /**
@@ -244,11 +271,18 @@ class FungibleToken extends TokenContract {
 
   @method
   async setAdmin(admin: PublicKey) {
+    const previousAdmin = this.admin.getAndRequireEquals();
     const canChangeAdmin = await this.canChangeAdmin(admin);
     canChangeAdmin.assertTrue(FungibleTokenErrors.noPermissionToChangeAdmin);
 
     this.admin.set(admin);
-    this.emitEvent('SetAdmin', new SetAdminEvent({ adminKey: admin }));
+    this.emitEvent(
+      'SetAdmin',
+      new SetAdminEvent({
+        previousAdmin,
+        newAdmin: admin,
+      })
+    );
   }
 
   @method.returns(AccountUpdate)
@@ -392,10 +426,7 @@ class FungibleToken extends TokenContract {
    * Internal burn implementation shared by both burn() and burnWithProof().
    * Contains the core burning logic without proof verification.
    */
-  async #internalBurn(
-    from: PublicKey,
-    amount: UInt64
-  ): Promise<AccountUpdate> {
+  async #internalBurn(from: PublicKey, amount: UInt64): Promise<AccountUpdate> {
     const accountUpdate = this.internal.burn({ address: from, amount });
 
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
@@ -486,6 +517,8 @@ class FungibleToken extends TokenContract {
       FungibleTokenErrors.noTransferFromCirculation
     );
     this.internal.send({ from, to, amount });
+
+    this.emitEvent('Transfer', new TransferEvent({ from, to, amount }));
   }
 
   private checkPermissionsUpdate(update: AccountUpdate) {
@@ -722,6 +755,14 @@ class FungibleToken extends TokenContract {
     mintConfig.validate();
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     this.packedAmountConfigs.set(mintConfig.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Config,
+        category: OperationKeys.Mint,
+      })
+    );
   }
 
   @method
@@ -731,6 +772,14 @@ class FungibleToken extends TokenContract {
     burnConfig.validate();
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     this.packedAmountConfigs.set(burnConfig.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Config,
+        category: OperationKeys.Burn,
+      })
+    );
   }
 
   @method
@@ -739,6 +788,14 @@ class FungibleToken extends TokenContract {
     mintParams.validate();
 
     this.packedMintParams.set(mintParams.pack());
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Params,
+        category: OperationKeys.Mint,
+      })
+    );
   }
 
   @method
@@ -747,6 +804,14 @@ class FungibleToken extends TokenContract {
     burnParams.validate();
 
     this.packedBurnParams.set(burnParams.pack());
+
+    this.emitEvent(
+      'ConfigStructureUpdate',
+      new ConfigStructureUpdateEvent({
+        updateType: EventTypes.Params,
+        category: OperationKeys.Burn,
+      })
+    );
   }
 
   @method
@@ -758,8 +823,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      mintDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = mintDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.Mint,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -772,8 +846,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      burnDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = burnDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.Burn,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -786,8 +869,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      transferDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = transferDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.Transfer,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -800,8 +892,17 @@ class FungibleToken extends TokenContract {
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    this.packedDynamicProofConfigs.set(
-      updatesDynamicProofConfig.updatePackedConfigs(packedDynamicProofConfigs)
+    const newPackedConfig = updatesDynamicProofConfig.updatePackedConfigs(
+      packedDynamicProofConfigs
+    );
+    this.packedDynamicProofConfigs.set(newPackedConfig);
+
+    this.emitEvent(
+      'DynamicProofConfigUpdate',
+      new DynamicProofConfigUpdateEvent({
+        operationType: OperationKeys.ApproveBase,
+        newConfig: newPackedConfig,
+      })
     );
   }
 
@@ -1010,8 +1111,19 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const params = MintParams.unpack(packedMintParams);
+    const oldValue = params.fixedAmount;
     params.fixedAmount = value;
     this.packedMintParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.FixedAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1019,9 +1131,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const params = MintParams.unpack(packedMintParams);
+    const oldValue = params.minAmount;
     params.minAmount = value;
     params.validate();
     this.packedMintParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MinAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1029,9 +1152,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
     const params = MintParams.unpack(packedMintParams);
+    const oldValue = params.maxAmount;
     params.maxAmount = value;
     params.validate();
     this.packedMintParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MaxAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1039,8 +1173,19 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
     const params = BurnParams.unpack(packedBurnParams);
+    const oldValue = params.fixedAmount;
     params.fixedAmount = value;
     this.packedBurnParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.FixedAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1048,9 +1193,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
     const params = BurnParams.unpack(packedBurnParams);
+    const oldValue = params.minAmount;
     params.minAmount = value;
     params.validate();
     this.packedBurnParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MinAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1058,9 +1214,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
     const params = BurnParams.unpack(packedBurnParams);
+    const oldValue = params.maxAmount;
     params.maxAmount = value;
     params.validate();
     this.packedBurnParams.set(params.pack());
+
+    this.emitEvent(
+      'AmountValueUpdate',
+      new AmountValueUpdateEvent({
+        parameterType: ParameterTypes.MaxAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1068,10 +1235,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = MintConfig.unpack(packedConfigs);
+    const oldValue = config.fixedAmount;
     config.fixedAmount = value;
     config.rangedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.FixedAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1079,10 +1257,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = MintConfig.unpack(packedConfigs);
+    const oldValue = config.rangedAmount;
     config.rangedAmount = value;
     config.fixedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.RangedAmount,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1090,9 +1279,20 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = MintConfig.unpack(packedConfigs);
+    const oldValue = config.unauthorized;
     config.unauthorized = value;
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.Unauthorized,
+        category: OperationKeys.Mint,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1100,10 +1300,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = BurnConfig.unpack(packedConfigs);
+    const oldValue = config.fixedAmount;
     config.fixedAmount = value;
     config.rangedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.FixedAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1111,10 +1322,21 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = BurnConfig.unpack(packedConfigs);
+    const oldValue = config.rangedAmount;
     config.rangedAmount = value;
     config.fixedAmount = value.not();
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.RangedAmount,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 
   @method
@@ -1122,14 +1344,26 @@ class FungibleToken extends TokenContract {
     this.ensureAdminSignature(Bool(true));
     const packedConfigs = this.packedAmountConfigs.getAndRequireEquals();
     const config = BurnConfig.unpack(packedConfigs);
+    const oldValue = config.unauthorized;
     config.unauthorized = value;
     config.validate();
     this.packedAmountConfigs.set(config.updatePackedConfigs(packedConfigs));
+
+    this.emitEvent(
+      'ConfigFlagUpdate',
+      new ConfigFlagUpdateEvent({
+        flagType: FlagTypes.Unauthorized,
+        category: OperationKeys.Burn,
+        oldValue,
+        newValue: value,
+      })
+    );
   }
 }
 
 class SetAdminEvent extends Struct({
-  adminKey: PublicKey,
+  previousAdmin: PublicKey,
+  newAdmin: PublicKey,
 }) {}
 class MintEvent extends Struct({
   recipient: PublicKey,
@@ -1150,6 +1384,45 @@ class SideLoadedVKeyUpdateEvent extends Struct({
   operationKey: Field,
   newVKeyHash: Field,
   newMerkleRoot: Field,
+}) {}
+
+class TransferEvent extends Struct({
+  from: PublicKey,
+  to: PublicKey,
+  amount: UInt64,
+}) {}
+
+class InitializationEvent extends Struct({
+  admin: PublicKey,
+  decimals: UInt8,
+}) {}
+
+class VerificationKeyUpdateEvent extends Struct({
+  vKeyHash: Field,
+}) {}
+
+class ConfigStructureUpdateEvent extends Struct({
+  updateType: Field, // EventTypes.Config or EventTypes.Params
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+}) {}
+
+class AmountValueUpdateEvent extends Struct({
+  parameterType: Field, // ParameterTypes.FixedAmount, MinAmount, or MaxAmount
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+  oldValue: UInt64,
+  newValue: UInt64,
+}) {}
+
+class DynamicProofConfigUpdateEvent extends Struct({
+  operationType: Field, // OperationKeys.Mint, Burn, Transfer, or ApproveBase
+  newConfig: Field, // The updated packed configuration
+}) {}
+
+class ConfigFlagUpdateEvent extends Struct({
+  flagType: Field, // FlagTypes.FixedAmount, RangedAmount, or Unauthorized
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+  oldValue: Bool,
+  newValue: Bool,
 }) {}
 
 // copied from: https://github.com/o1-labs/o1js/blob/6ebbc23710f6de023fea6d83dc93c5a914c571f2/src/lib/mina/token/token-contract.ts#L189
