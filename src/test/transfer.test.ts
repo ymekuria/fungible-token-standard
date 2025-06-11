@@ -9,7 +9,11 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
+import {
+  FungibleToken,
+  FungibleTokenErrors,
+  VKeyMerkleMap,
+} from '../NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -29,7 +33,7 @@ import {
   SideloadedProof,
   program2,
 } from '../side-loaded/program.eg.js';
-import { FungibleTokenErrors } from '../NewTokenStandard.js';
+import { TEST_ERROR_MESSAGES } from './constants.js';
 
 const proofsEnabled = false;
 
@@ -306,7 +310,7 @@ describe('New Token Standard Transfer Tests', () => {
     it('should reject a transaction not signed by the token holder', async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        'Check signature: Invalid signature on fee payer for key';
+        TEST_ERROR_MESSAGES.INVALID_SIGNATURE_FEE_PAYER;
       await testTransferTx(
         user1,
         user3,
@@ -332,7 +336,7 @@ describe('New Token Standard Transfer Tests', () => {
     it("Should prevent transfers from account that's tracking circulation", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       await testTransferTx(
         tokenA,
         user3,
@@ -345,7 +349,7 @@ describe('New Token Standard Transfer Tests', () => {
     it("Should prevent transfers from account that's tracking circulation with transferSideloadDisabled", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       await testTransferSideloadDisabledTx(
         tokenA,
         user3,
@@ -358,7 +362,7 @@ describe('New Token Standard Transfer Tests', () => {
     it("Should prevent transfers to account that's tracking circulation", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       await testTransferTx(
         user1,
         tokenA,
@@ -371,7 +375,7 @@ describe('New Token Standard Transfer Tests', () => {
     it("Should prevent transfers to account that's tracking circulation with transferSideloadDisabled", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       await testTransferSideloadDisabledTx(
         user1,
         tokenA,
@@ -443,7 +447,7 @@ describe('New Token Standard Transfer Tests', () => {
     });
 
     it('should reject updating side-loaded vKey hash: invalid operationKey', async () => {
-      const expectedErrorMessage = 'Please enter a valid operation key!';
+      const expectedErrorMessage = FungibleTokenErrors.invalidOperationKey;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -458,8 +462,7 @@ describe('New Token Standard Transfer Tests', () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(13n, Field.random());
 
-      const expectedErrorMessage =
-        'Off-chain side-loaded vKey Merkle Map is out of sync!';
+      const expectedErrorMessage = FungibleTokenErrors.vKeyMapOutOfSync;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -471,8 +474,7 @@ describe('New Token Standard Transfer Tests', () => {
     });
 
     it('should reject transfer if vKeyHash was never updated', async () => {
-      const expectedErrorMessage =
-        'Verification key hash is missing for this operation. Please make sure to register it before verifying a side-loaded proof when `shouldVerify` is enabled in the config.';
+      const expectedErrorMessage = FungibleTokenErrors.missingVKeyForOperation;
 
       await testTransferSLTx(
         user2,
@@ -504,8 +506,7 @@ describe('New Token Standard Transfer Tests', () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
-      const expectedErrorMessage =
-        'Off-chain side-loaded vKey Merkle Map is out of sync!';
+      const expectedErrorMessage = FungibleTokenErrors.vKeyMapOutOfSync;
 
       await testTransferSLTx(
         user2,
@@ -533,7 +534,7 @@ describe('New Token Standard Transfer Tests', () => {
     });
 
     it('should reject transfer given a non-compliant vKey hash', async () => {
-      const expectedErrorMessage = 'Invalid side-loaded verification key!';
+      const expectedErrorMessage = FungibleTokenErrors.invalidSideLoadedVKey;
 
       await testTransferSLTx(
         user2,
@@ -558,7 +559,7 @@ describe('New Token Standard Transfer Tests', () => {
           user1
         );
 
-        const expectedErrorMessage = 'Constraint unsatisfied (unreduced)';
+        const expectedErrorMessage = TEST_ERROR_MESSAGES.CONSTRAINT_UNSATISFIED;
         await testTransferSLTx(
           user1,
           deployer,
@@ -597,7 +598,7 @@ describe('New Token Standard Transfer Tests', () => {
       );
 
       const transferAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Recipient mismatch in side-loaded proof!';
+      const expectedErrorMessage = FungibleTokenErrors.recipientMismatch;
       await testTransferSLTx(
         user1,
         user3,
@@ -614,7 +615,7 @@ describe('New Token Standard Transfer Tests', () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
 
       const transferAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Token ID mismatch between input and output';
+      const expectedErrorMessage = FungibleTokenErrors.tokenIdMismatch;
       await testTransferSLTx(
         user1,
         user3,
@@ -647,7 +648,7 @@ describe('New Token Standard Transfer Tests', () => {
       sendMinaTx.sign([user1.key]).send().wait();
 
       const transferAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Mismatch in MINA account balance.';
+      const expectedErrorMessage = FungibleTokenErrors.minaBalanceMismatch;
       await testTransferSLTx(
         user1,
         user3,
@@ -685,7 +686,7 @@ describe('New Token Standard Transfer Tests', () => {
 
       const transferAmount = UInt64.from(150);
       const expectedErrorMessage =
-        'Custom token balance inconsistency detected!';
+        FungibleTokenErrors.customTokenBalanceMismatch;
       await testTransferSLTx(
         user2,
         user3,
@@ -721,7 +722,7 @@ describe('New Token Standard Transfer Tests', () => {
       await sendTx.sign([user1.key, user2.key]).send().wait();
 
       const transferAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Mismatch in MINA account nonce!';
+      const expectedErrorMessage = FungibleTokenErrors.minaNonceMismatch;
       await testTransferSLTx(
         user1,
         user3,

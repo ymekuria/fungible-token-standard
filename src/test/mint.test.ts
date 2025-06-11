@@ -11,8 +11,8 @@ import {
 } from 'o1js';
 import {
   FungibleToken,
-  VKeyMerkleMap,
   FungibleTokenErrors,
+  VKeyMerkleMap,
 } from '../NewTokenStandard.js';
 import {
   MintConfig,
@@ -24,6 +24,7 @@ import {
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
   OperationKeys,
+  ConfigErrors,
 } from '../configs.js';
 import {
   program,
@@ -38,6 +39,7 @@ import {
   PARAMS_PROPERTIES,
   ConfigProperty,
   ParamsProperty,
+  TEST_ERROR_MESSAGES,
 } from './constants.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
@@ -563,7 +565,7 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should reject initialization when a signature from the token address is missing', async () => {
       const expectedErrorMessage =
-        'Check signature: Invalid signature on account_update 2';
+        TEST_ERROR_MESSAGES.INVALID_SIGNATURE_ACCOUNT_UPDATE;
       await testInitializeTx([deployer.key], expectedErrorMessage);
     });
 
@@ -574,8 +576,7 @@ describe('New Token Standard Mint Tests', () => {
         rangedAmount: Bool(true),
       });
 
-      const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
+      const expectedErrorMessage = ConfigErrors.invalidConfigValidation;
       await testInitializeTx(
         [deployer.key, tokenA.key],
         expectedErrorMessage,
@@ -590,7 +591,7 @@ describe('New Token Standard Mint Tests', () => {
         maxAmount: UInt64.from(100),
       });
 
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
       await testInitializeTx(
         [deployer.key, tokenA.key],
         expectedErrorMessage,
@@ -606,8 +607,7 @@ describe('New Token Standard Mint Tests', () => {
         rangedAmount: Bool(true),
       });
 
-      const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
+      const expectedErrorMessage = ConfigErrors.invalidConfigValidation;
       await testInitializeTx(
         [deployer.key, tokenA.key],
         expectedErrorMessage,
@@ -624,7 +624,7 @@ describe('New Token Standard Mint Tests', () => {
         maxAmount: UInt64.from(150),
       });
 
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
       await testInitializeTx(
         [deployer.key, tokenA.key],
         expectedErrorMessage,
@@ -705,7 +705,18 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         UInt64.from(1100),
         [user1.key, tokenAdmin.key],
-        'Not allowed to mint tokens'
+        FungibleTokenErrors.noPermissionToMint
+      );
+    });
+
+    it('should reject minting amount outside the valid range with mintSideloadDisabled', async () => {
+      // Attempt to mint an amount outside the default MintParams range (0-1000)
+      const invalidMintAmount = UInt64.from(2000);
+      await testMintSideloadDisabledTx(
+        user1,
+        invalidMintAmount,
+        [user1.key, tokenAdmin.key],
+        FungibleTokenErrors.noPermissionToMint
       );
     });
 
@@ -722,7 +733,7 @@ describe('New Token Standard Mint Tests', () => {
 
     it('should reject minting to the circulating supply account', async () => {
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       try {
         const tx = await Mina.transaction({ sender: user2, fee }, async () => {
           AccountUpdate.fundNewAccount(user2, 2);
@@ -758,6 +769,17 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         UInt64.from(300),
         [user1.key],
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED
+      );
+    });
+
+    it('should reject unauthorized minting with mintSideloadDisabled', async () => {
+      // Attempt to mint without admin signature (default MintConfig is authorized)
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key], // Missing tokenAdmin.key
         'the required authorization was not provided or is invalid.'
       );
     });
@@ -782,8 +804,7 @@ describe('New Token Standard Mint Tests', () => {
         rangedAmount: Bool(true),
       });
 
-      const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
+      const expectedErrorMessage = ConfigErrors.invalidConfigValidation;
       await updateMintConfigTx(
         user1,
         mintConfig,
@@ -800,7 +821,7 @@ describe('New Token Standard Mint Tests', () => {
       });
 
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateMintConfigTx(
         user2,
         mintConfig,
@@ -1002,7 +1023,7 @@ describe('New Token Standard Mint Tests', () => {
         maxAmount: UInt64.from(0),
       });
 
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
       await updateMintParamsTx(
         user2,
         mintParams,
@@ -1019,7 +1040,7 @@ describe('New Token Standard Mint Tests', () => {
       });
 
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateMintParamsTx(
         user1,
         mintParams,
@@ -1173,7 +1194,7 @@ describe('New Token Standard Mint Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const invalidNewMinAmount = originalMaxAmount.add(100);
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1251,7 +1272,7 @@ describe('New Token Standard Mint Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const invalidNewMaxAmount = originalMinAmount.sub(10);
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1285,7 +1306,17 @@ describe('New Token Standard Mint Tests', () => {
         user1,
         UInt64.from(500),
         [user1.key],
-        'Not allowed to mint tokens'
+        FungibleTokenErrors.noPermissionToMint
+      );
+    });
+
+    it('should reject minting an amount different from the fixed value with mintSideloadDisabled', async () => {
+      const wrongMintAmount = UInt64.from(55);
+      await testMintSideloadDisabledTx(
+        user1,
+        wrongMintAmount,
+        [user1.key],
+        FungibleTokenErrors.noPermissionToMint
       );
     });
 
@@ -1358,7 +1389,7 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should reject updating side-loaded vKey hash: invalid operationKey', async () => {
-      const expectedErrorMessage = 'Please enter a valid operation key!';
+      const expectedErrorMessage = FungibleTokenErrors.invalidOperationKey;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1373,8 +1404,7 @@ describe('New Token Standard Mint Tests', () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
-      const expectedErrorMessage =
-        'Off-chain side-loaded vKey Merkle Map is out of sync!';
+      const expectedErrorMessage = FungibleTokenErrors.vKeyMapOutOfSync;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1386,8 +1416,7 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should reject mint if vKeyHash was never updated', async () => {
-      const expectedErrorMessage =
-        'Verification key hash is missing for this operation. Please make sure to register it before verifying a side-loaded proof when `shouldVerify` is enabled in the config.';
+      const expectedErrorMessage = FungibleTokenErrors.missingVKeyForOperation;
 
       await testMintSLTx(
         user2,
@@ -1419,8 +1448,7 @@ describe('New Token Standard Mint Tests', () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
-      const expectedErrorMessage =
-        'Off-chain side-loaded vKey Merkle Map is out of sync!';
+      const expectedErrorMessage = FungibleTokenErrors.vKeyMapOutOfSync;
 
       await testMintSLTx(
         user2,
@@ -1434,7 +1462,7 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     it('should reject mint given a non-compliant vKey hash', async () => {
-      const expectedErrorMessage = 'Invalid side-loaded verification key!';
+      const expectedErrorMessage = FungibleTokenErrors.invalidSideLoadedVKey;
 
       await testMintSLTx(
         user2,
@@ -1458,7 +1486,7 @@ describe('New Token Standard Mint Tests', () => {
           user1
         );
 
-        const expectedErrorMessage = 'Constraint unsatisfied (unreduced)';
+        const expectedErrorMessage = TEST_ERROR_MESSAGES.CONSTRAINT_UNSATISFIED;
         await testMintSLTx(
           user1,
           mintAmount,
@@ -1495,7 +1523,7 @@ describe('New Token Standard Mint Tests', () => {
       );
 
       const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = 'Recipient mismatch in side-loaded proof!';
+      const expectedErrorMessage = FungibleTokenErrors.recipientMismatch;
       await testMintSLTx(
         user1,
         mintAmount,
@@ -1511,7 +1539,7 @@ describe('New Token Standard Mint Tests', () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
 
       const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = 'Token ID mismatch between input and output';
+      const expectedErrorMessage = FungibleTokenErrors.tokenIdMismatch;
       await testMintSLTx(
         user1,
         mintAmount,
@@ -1543,7 +1571,7 @@ describe('New Token Standard Mint Tests', () => {
       sendMinaTx.sign([user1.key]).send().wait();
 
       const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = 'Mismatch in MINA account balance.';
+      const expectedErrorMessage = FungibleTokenErrors.minaBalanceMismatch;
       await testMintSLTx(
         user1,
         mintAmount,
@@ -1580,7 +1608,7 @@ describe('New Token Standard Mint Tests', () => {
 
       const mintAmount = UInt64.from(600);
       const expectedErrorMessage =
-        'Custom token balance inconsistency detected!';
+        FungibleTokenErrors.customTokenBalanceMismatch;
       await testMintSLTx(
         user2,
         mintAmount,
@@ -1615,7 +1643,7 @@ describe('New Token Standard Mint Tests', () => {
       await sendTx.sign([user1.key, user2.key]).send().wait();
 
       const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = 'Mismatch in MINA account nonce!';
+      const expectedErrorMessage = FungibleTokenErrors.minaNonceMismatch;
       await testMintSLTx(
         user1,
         mintAmount,

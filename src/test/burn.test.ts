@@ -24,6 +24,7 @@ import {
   TransferDynamicProofConfig,
   UpdatesDynamicProofConfig,
   OperationKeys,
+  ConfigErrors,
 } from '../configs.js';
 import {
   program,
@@ -38,6 +39,7 @@ import {
   PARAMS_PROPERTIES,
   ConfigProperty,
   ParamsProperty,
+  TEST_ERROR_MESSAGES,
 } from './constants.js';
 
 const proofsEnabled = false;
@@ -472,7 +474,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(700),
         [user1.key],
-        'Not allowed to burn tokens'
+        FungibleTokenErrors.noPermissionToBurn
       );
     });
 
@@ -481,13 +483,22 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(700),
         [user1.key],
-        'Not allowed to burn tokens'
+        FungibleTokenErrors.noPermissionToBurn
+      );
+    });
+
+    it('should reject burning an amount outside the valid range with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(700),
+        [user1.key],
+        FungibleTokenErrors.noPermissionToBurn
       );
     });
 
     it('should reject burning from the circulating supply account', async () => {
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       try {
         const tx = await Mina.transaction({ sender: user2, fee }, async () => {
           AccountUpdate.fundNewAccount(user2, 2);
@@ -513,7 +524,7 @@ describe('New Token Standard Burn Tests', () => {
         tokenContract.address,
         UInt64.from(100),
         [user2.key],
-        "Can't transfer to/from the circulation account"
+        FungibleTokenErrors.noTransferFromCirculation
       );
     });
   });
@@ -526,8 +537,7 @@ describe('New Token Standard Burn Tests', () => {
         rangedAmount: Bool(true),
       });
 
-      const expectedErrorMessage =
-        'Exactly one of the fixed or ranged amount options must be enabled!';
+      const expectedErrorMessage = ConfigErrors.invalidConfigValidation;
       await updateBurnConfigTx(
         user1,
         burnConfig,
@@ -746,7 +756,7 @@ describe('New Token Standard Burn Tests', () => {
         maxAmount: UInt64.from(50),
       });
 
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
       await updateBurnParamsTx(
         user2,
         burnParams,
@@ -915,7 +925,7 @@ describe('New Token Standard Burn Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const invalidNewMinAmount = originalMaxAmount.add(100);
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
 
       await updateBurnParamsPropertyTx(
         user1,
@@ -993,7 +1003,7 @@ describe('New Token Standard Burn Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const invalidNewMaxAmount = originalMinAmount.sub(10);
-      const expectedErrorMessage = 'Invalid amount range!';
+      const expectedErrorMessage = ConfigErrors.invalidAmountRange;
 
       await updateBurnParamsPropertyTx(
         user1,
@@ -1019,7 +1029,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(50),
         [user1.key],
-        'Not allowed to burn tokens',
+        FungibleTokenErrors.noPermissionToBurn,
         0
       );
     });
@@ -1029,7 +1039,17 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(50),
         [user1.key],
-        'Not allowed to burn tokens',
+        FungibleTokenErrors.noPermissionToBurn,
+        0
+      );
+    });
+
+    it('should reject burning an amount different from the fixed value with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(50),
+        [user1.key],
+        FungibleTokenErrors.noPermissionToBurn,
         0
       );
     });
@@ -1138,7 +1158,7 @@ describe('New Token Standard Burn Tests', () => {
     });
 
     it('should reject updating side-loaded vKey hash: invalid operationKey', async () => {
-      const expectedErrorMessage = 'Please enter a valid operation key!';
+      const expectedErrorMessage = FungibleTokenErrors.invalidOperationKey;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1153,8 +1173,7 @@ describe('New Token Standard Burn Tests', () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(11n, Field.random());
 
-      const expectedErrorMessage =
-        'Off-chain side-loaded vKey Merkle Map is out of sync!';
+      const expectedErrorMessage = FungibleTokenErrors.vKeyMapOutOfSync;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1166,8 +1185,7 @@ describe('New Token Standard Burn Tests', () => {
     });
 
     it('should reject burn if vKeyHash was never updated', async () => {
-      const expectedErrorMessage =
-        'Verification key hash is missing for this operation. Please make sure to register it before verifying a side-loaded proof when `shouldVerify` is enabled in the config.';
+      const expectedErrorMessage = FungibleTokenErrors.missingVKeyForOperation;
 
       await testBurnSLTx(
         user2,
@@ -1199,8 +1217,7 @@ describe('New Token Standard Burn Tests', () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
-      const expectedErrorMessage =
-        'Off-chain side-loaded vKey Merkle Map is out of sync!';
+      const expectedErrorMessage = FungibleTokenErrors.vKeyMapOutOfSync;
 
       await testBurnSLTx(
         user2,
@@ -1214,7 +1231,7 @@ describe('New Token Standard Burn Tests', () => {
     });
 
     it('should reject burn given a non-compliant vKey hash', async () => {
-      const expectedErrorMessage = 'Invalid side-loaded verification key!';
+      const expectedErrorMessage = FungibleTokenErrors.invalidSideLoadedVKey;
 
       await testBurnSLTx(
         user2,
@@ -1238,7 +1255,7 @@ describe('New Token Standard Burn Tests', () => {
           user1
         );
 
-        const expectedErrorMessage = 'Constraint unsatisfied (unreduced)';
+        const expectedErrorMessage = TEST_ERROR_MESSAGES.CONSTRAINT_UNSATISFIED;
         await testBurnSLTx(
           user1,
           burnAmount,
@@ -1284,7 +1301,7 @@ describe('New Token Standard Burn Tests', () => {
       );
 
       const burnAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Recipient mismatch in side-loaded proof!';
+      const expectedErrorMessage = FungibleTokenErrors.recipientMismatch;
       await testBurnSLTx(
         user1,
         burnAmount,
@@ -1300,7 +1317,7 @@ describe('New Token Standard Burn Tests', () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
 
       const burnAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Token ID mismatch between input and output';
+      const expectedErrorMessage = FungibleTokenErrors.tokenIdMismatch;
       await testBurnSLTx(
         user1,
         burnAmount,
@@ -1332,7 +1349,7 @@ describe('New Token Standard Burn Tests', () => {
       sendMinaTx.sign([user1.key]).send().wait();
 
       const burnAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Mismatch in MINA account balance.';
+      const expectedErrorMessage = FungibleTokenErrors.minaBalanceMismatch;
       await testBurnSLTx(
         user1,
         burnAmount,
@@ -1369,7 +1386,7 @@ describe('New Token Standard Burn Tests', () => {
 
       const burnAmount = UInt64.from(150);
       const expectedErrorMessage =
-        'Custom token balance inconsistency detected!';
+        FungibleTokenErrors.customTokenBalanceMismatch;
       await testBurnSLTx(
         user2,
         burnAmount,
@@ -1404,7 +1421,7 @@ describe('New Token Standard Burn Tests', () => {
       await sendTx.sign([user1.key, user2.key]).send().wait();
 
       const burnAmount = UInt64.from(150);
-      const expectedErrorMessage = 'Mismatch in MINA account nonce!';
+      const expectedErrorMessage = FungibleTokenErrors.minaNonceMismatch;
       await testBurnSLTx(
         user1,
         burnAmount,
