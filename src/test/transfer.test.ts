@@ -103,7 +103,7 @@ describe('New Token Standard Transfer Tests', () => {
       const receiverBalanceBefore = await tokenContract.getBalanceOf(receiver);
       const tx = await Mina.transaction({ sender, fee }, async () => {
         AccountUpdate.fundNewAccount(sender, numberOfAccounts);
-        await tokenContract.transferCustom(
+        await tokenContract.transferCustomWithProof(
           sender,
           receiver,
           transferAmount,
@@ -171,7 +171,7 @@ describe('New Token Standard Transfer Tests', () => {
       const senderBalanceBefore = await tokenContract.getBalanceOf(sender);
       const receiverBalanceBefore = await tokenContract.getBalanceOf(receiver);
       const tx = await Mina.transaction({ sender: sender, fee }, async () => {
-        await tokenContract.transferCustom(
+        await tokenContract.transferCustomWithProof(
           sender,
           receiver,
           transferAmount,
@@ -179,6 +179,38 @@ describe('New Token Standard Transfer Tests', () => {
           vKey ?? dummyVkey,
           vKeyMerkleMap ?? vKeyMap
         );
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const senderBalanceAfter = await tokenContract.getBalanceOf(sender);
+      const receiverBalanceAfter = await tokenContract.getBalanceOf(receiver);
+      expect(senderBalanceAfter).toEqual(
+        senderBalanceBefore.sub(transferAmount)
+      );
+      expect(receiverBalanceAfter).toEqual(
+        receiverBalanceBefore.add(transferAmount)
+      );
+
+      if (expectedErrorMessage)
+        throw new Error('Test should have failed but didnt!');
+    } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function testTransferSideloadDisabledTx(
+    sender: PublicKey,
+    receiver: PublicKey,
+    transferAmount: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string
+  ) {
+    try {
+      const senderBalanceBefore = await tokenContract.getBalanceOf(sender);
+      const receiverBalanceBefore = await tokenContract.getBalanceOf(receiver);
+      const tx = await Mina.transaction({ sender: sender, fee }, async () => {
+        await tokenContract.transferCustom(sender, receiver, transferAmount);
       });
       await tx.prove();
       await tx.sign(signers).send().wait();
@@ -240,7 +272,7 @@ describe('New Token Standard Transfer Tests', () => {
       const mintAmount = UInt64.from(1000);
       const tx = await Mina.transaction({ sender: user1, fee }, async () => {
         AccountUpdate.fundNewAccount(user1, 3);
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user1,
           mintAmount,
           dummyProof,
@@ -248,7 +280,7 @@ describe('New Token Standard Transfer Tests', () => {
           vKeyMap
         );
 
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user2,
           mintAmount,
           dummyProof,
@@ -268,11 +300,31 @@ describe('New Token Standard Transfer Tests', () => {
       await testTransferTx(user2, user3, transferAmount, [user2.key]);
     });
 
+    it('should do a transfer from user2 to user3 with transferSideloadDisabled', async () => {
+      const transferAmount = UInt64.from(100);
+      await testTransferSideloadDisabledTx(user2, user3, transferAmount, [
+        user2.key,
+      ]);
+    });
+
     it('should reject a transaction not signed by the token holder', async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
         TEST_ERROR_MESSAGES.INVALID_SIGNATURE_FEE_PAYER;
       await testTransferTx(
+        user1,
+        user3,
+        transferAmount,
+        [user3.key],
+        expectedErrorMessage
+      );
+    });
+
+    it('should reject a transaction not signed by the token holder with transferSideloadDisabled', async () => {
+      const transferAmount = UInt64.from(100);
+      const expectedErrorMessage =
+        'Check signature: Invalid signature on fee payer for key';
+      await testTransferSideloadDisabledTx(
         user1,
         user3,
         transferAmount,
@@ -294,11 +346,37 @@ describe('New Token Standard Transfer Tests', () => {
       );
     });
 
+    it("Should prevent transfers from account that's tracking circulation with transferSideloadDisabled", async () => {
+      const transferAmount = UInt64.from(100);
+      const expectedErrorMessage =
+        "Can't transfer to/from the circulation account";
+      await testTransferSideloadDisabledTx(
+        tokenA,
+        user3,
+        transferAmount,
+        [user3.key],
+        expectedErrorMessage
+      );
+    });
+
     it("Should prevent transfers to account that's tracking circulation", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
       await testTransferTx(
+        user1,
+        tokenA,
+        transferAmount,
+        [user3.key],
+        expectedErrorMessage
+      );
+    });
+
+    it("Should prevent transfers to account that's tracking circulation with transferSideloadDisabled", async () => {
+      const transferAmount = UInt64.from(100);
+      const expectedErrorMessage =
+        "Can't transfer to/from the circulation account";
+      await testTransferSideloadDisabledTx(
         user1,
         tokenA,
         transferAmount,
@@ -442,6 +520,19 @@ describe('New Token Standard Transfer Tests', () => {
       );
     });
 
+    it('should reject transferSideloadDisabled when side-loading is enabled', async () => {
+      const transferAmount = UInt64.from(100);
+      const expectedErrorMessage =
+        FungibleTokenErrors.noPermissionForSideloadDisabledOperation;
+      await testTransferSideloadDisabledTx(
+        user2,
+        user3,
+        transferAmount,
+        [user2.key],
+        expectedErrorMessage
+      );
+    });
+
     it('should reject transfer given a non-compliant vKey hash', async () => {
       const expectedErrorMessage = FungibleTokenErrors.invalidSideLoadedVKey;
 
@@ -581,7 +672,7 @@ describe('New Token Standard Transfer Tests', () => {
       const burnTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.burn(
+          await tokenContract.burnWithProof(
             user2,
             UInt64.from(150),
             dynamicProof,
