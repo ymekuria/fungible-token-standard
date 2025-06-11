@@ -9,7 +9,11 @@ import {
   UInt8,
   VerificationKey,
 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../NewTokenStandard.js';
+import {
+  FungibleToken,
+  VKeyMerkleMap,
+  FungibleTokenErrors,
+} from '../NewTokenStandard.js';
 import {
   MintConfig,
   MintParams,
@@ -136,13 +140,39 @@ describe('New Token Standard Mint Tests', () => {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
         AccountUpdate.fundNewAccount(user, numberOfAccounts);
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user,
           mintAmount,
           dummyProof,
           dummyVkey,
           vKeyMap
         );
+      });
+      await tx.prove();
+      await tx.sign(signers).send().wait();
+
+      const userBalanceAfter = await tokenContract.getBalanceOf(user);
+      expect(userBalanceAfter).toEqual(userBalanceBefore.add(mintAmount));
+
+      if (expectedErrorMessage)
+        throw new Error('Test should have failed but didnt!');
+    } catch (error: unknown) {
+      expect((error as Error).message).toContain(expectedErrorMessage);
+    }
+  }
+
+  async function testMintSideloadDisabledTx(
+    user: PublicKey,
+    mintAmount: UInt64,
+    signers: PrivateKey[],
+    expectedErrorMessage?: string,
+    numberOfAccounts = 2
+  ) {
+    try {
+      const userBalanceBefore = await tokenContract.getBalanceOf(user);
+      const tx = await Mina.transaction({ sender: user, fee }, async () => {
+        AccountUpdate.fundNewAccount(user, numberOfAccounts);
+        await tokenContract.mint(user, mintAmount);
       });
       await tx.prove();
       await tx.sign(signers).send().wait();
@@ -325,7 +355,7 @@ describe('New Token Standard Mint Tests', () => {
     try {
       const userBalanceBefore = await tokenContract.getBalanceOf(user);
       const tx = await Mina.transaction({ sender: user, fee }, async () => {
-        await tokenContract.mint(
+        await tokenContract.mintWithProof(
           user,
           mintAmount,
           proof ?? dummyProof,
@@ -605,7 +635,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('Should initialize tokenA contract', async () => {
+    it('should initialize tokenA contract', async () => {
       await testInitializeTx([deployer.key, tokenA.key]);
     });
 
@@ -616,11 +646,58 @@ describe('New Token Standard Mint Tests', () => {
         "Cannot update field 'permissions' because permission for this field is 'Impossible'";
       await testInitializeTx([deployer.key, tokenA.key], expectedErrorMessage);
     });
+
+    it('should return all configs after initialization', async () => {
+      const configs = await tokenContract.getAllConfigs();
+
+      expect(configs).toHaveLength(4);
+      expect(configs[0]).toBeInstanceOf(Field);
+      expect(configs[1]).toBeInstanceOf(Field);
+      expect(configs[2]).toBeInstanceOf(Field);
+      expect(configs[3]).toBeInstanceOf(Field);
+
+      const [
+        packedAmountConfigs,
+        packedMintParams,
+        packedBurnParams,
+        packedDynamicProofConfigs,
+      ] = configs;
+
+      const mintConfig = MintConfig.unpack(packedAmountConfigs);
+      const burnConfig = BurnConfig.unpack(packedAmountConfigs);
+      const unpackedMintParams = MintParams.unpack(packedMintParams);
+      const unpackedBurnParams = BurnParams.unpack(packedBurnParams);
+
+      expect(mintConfig.unauthorized).toEqual(Bool(false));
+      expect(mintConfig.fixedAmount).toEqual(Bool(false));
+      expect(mintConfig.rangedAmount).toEqual(Bool(true));
+
+      expect(burnConfig.unauthorized).toEqual(Bool(true));
+      expect(burnConfig.fixedAmount).toEqual(Bool(false));
+      expect(burnConfig.rangedAmount).toEqual(Bool(true));
+
+      expect(unpackedMintParams.minAmount).toEqual(mintParams.minAmount);
+      expect(unpackedMintParams.maxAmount).toEqual(mintParams.maxAmount);
+      expect(unpackedBurnParams.minAmount).toEqual(burnParams.minAmount);
+      expect(unpackedBurnParams.maxAmount).toEqual(burnParams.maxAmount);
+    });
   });
 
   describe('Mint Config: Default: Authorized/Ranged', () => {
     it('should mint an amount within the valid range: user', async () => {
       await testMintTx(user1, UInt64.from(200), [user1.key, tokenAdmin.key]);
+    });
+
+    it('should mint an amount within the valid range with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(100);
+      // User1 signs for the AU, tokenAdmin signs because default MintConfig is authorized
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key, tokenAdmin.key],
+        '',
+        2
+      );
     });
 
     it('should reject minting an amount outside the valid range', async () => {
@@ -632,13 +709,24 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
+    it('should reject minting amount outside the valid range with mintSideloadDisabled', async () => {
+      // Attempt to mint an amount outside the default MintParams range (0-1000)
+      const invalidMintAmount = UInt64.from(2000);
+      await testMintSideloadDisabledTx(
+        user1,
+        invalidMintAmount,
+        [user1.key, tokenAdmin.key],
+        FungibleTokenErrors.noPermissionToMint
+      );
+    });
+
     it('should reject minting to the circulating supply account', async () => {
       const expectedErrorMessage =
         "Can't transfer to/from the circulation account";
       try {
         const tx = await Mina.transaction({ sender: user2, fee }, async () => {
           AccountUpdate.fundNewAccount(user2, 2);
-          await tokenContract.mint(
+          await tokenContract.mintWithProof(
             tokenContract.address,
             UInt64.from(200),
             dummyProof,
@@ -655,11 +743,32 @@ describe('New Token Standard Mint Tests', () => {
       }
     });
 
+    it('should reject minting to the circulation supply account with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        tokenContract.address, // recipient is the contract itself
+        mintAmount,
+        [deployer.key, tokenAdmin.key], // deployer funds and initiates, admin authorizes mint
+        FungibleTokenErrors.noTransferFromCirculation
+      );
+    });
+
     it('should reject unauthorized minting', async () => {
       await testMintTx(
         user1,
         UInt64.from(300),
         [user1.key],
+        'the required authorization was not provided or is invalid.'
+      );
+    });
+
+    it('should reject unauthorized minting with mintSideloadDisabled', async () => {
+      // Attempt to mint without admin signature (default MintConfig is authorized)
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key], // Missing tokenAdmin.key
         'the required authorization was not provided or is invalid.'
       );
     });
@@ -708,6 +817,34 @@ describe('New Token Standard Mint Tests', () => {
       });
 
       await updateMintConfigTx(user2, mintConfig, [user2.key, tokenAdmin.key]);
+    });
+
+    it('should reflect mint config updates in getAllConfigs()', async () => {
+      const configsBefore = await tokenContract.getAllConfigs();
+
+      // Update mint config to fixed amount
+      const newMintConfig = new MintConfig({
+        unauthorized: Bool(true),
+        fixedAmount: Bool(true),
+        rangedAmount: Bool(false),
+      });
+
+      await updateMintConfigTx(user2, newMintConfig, [
+        user2.key,
+        tokenAdmin.key,
+      ]);
+
+      const configsAfter = await tokenContract.getAllConfigs();
+
+      expect(configsAfter[0]).not.toEqual(configsBefore[0]); // packedAmountConfigs
+      expect(configsAfter[1]).toEqual(configsBefore[1]); // packedMintParams
+      expect(configsAfter[2]).toEqual(configsBefore[2]); // packedBurnParams
+      expect(configsAfter[3]).toEqual(configsBefore[3]); // packedDynamicProofConfigs
+
+      const updatedMintConfig = MintConfig.unpack(configsAfter[0]);
+      expect(updatedMintConfig.unauthorized).toEqual(Bool(true));
+      expect(updatedMintConfig.fixedAmount).toEqual(Bool(true));
+      expect(updatedMintConfig.rangedAmount).toEqual(Bool(false));
     });
 
     it('should update fixedAmount config via field-specific function', async () => {
@@ -895,7 +1032,40 @@ describe('New Token Standard Mint Tests', () => {
       await updateMintParamsTx(user1, mintParams, [user1.key, tokenAdmin.key]);
     });
 
+    it('should reflect mint params updates in getAllConfigs()', async () => {
+      const configsBefore = await tokenContract.getAllConfigs();
+
+      const newMintParams = new MintParams({
+        fixedAmount: UInt64.from(500),
+        minAmount: UInt64.from(200),
+        maxAmount: UInt64.from(1500),
+      });
+
+      await updateMintParamsTx(user1, newMintParams, [
+        user1.key,
+        tokenAdmin.key,
+      ]);
+
+      const configsAfter = await tokenContract.getAllConfigs();
+
+      expect(configsAfter[0]).toEqual(configsBefore[0]); // packedAmountConfigs
+      expect(configsAfter[1]).not.toEqual(configsBefore[1]); // packedMintParams
+      expect(configsAfter[2]).toEqual(configsBefore[2]); // packedBurnParams
+      expect(configsAfter[3]).toEqual(configsBefore[3]); // packedDynamicProofConfigs
+
+      const updatedMintParams = MintParams.unpack(configsAfter[1]);
+      expect(updatedMintParams.fixedAmount).toEqual(UInt64.from(500));
+      expect(updatedMintParams.minAmount).toEqual(UInt64.from(200));
+      expect(updatedMintParams.maxAmount).toEqual(UInt64.from(1500));
+    });
+
     it('should update mint fixed amount via field-specific function', async () => {
+      const paramsBeforeUpdate = MintParams.unpack(
+        tokenContract.packedMintParams.get()
+      );
+      const originalMinAmount = paramsBeforeUpdate.minAmount;
+      const originalMaxAmount = paramsBeforeUpdate.maxAmount;
+
       const newFixedAmount = UInt64.from(600);
       await updateMintParamsPropertyTx(
         user1,
@@ -908,8 +1078,8 @@ describe('New Token Standard Mint Tests', () => {
         tokenContract.packedMintParams.get()
       );
       expect(paramsAfterUpdate.fixedAmount).toEqual(newFixedAmount);
-      expect(paramsAfterUpdate.minAmount).toEqual(mintParams.minAmount);
-      expect(paramsAfterUpdate.maxAmount).toEqual(mintParams.maxAmount);
+      expect(paramsAfterUpdate.minAmount).toEqual(originalMinAmount);
+      expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount);
     });
 
     it('should reject mint fixed amount update via field-specific function when unauthorized by the admin', async () => {
@@ -1105,12 +1275,27 @@ describe('New Token Standard Mint Tests', () => {
       await testMintTx(user2, UInt64.from(600), [user2.key], undefined, 1);
     });
 
+    it('should allow minting without authorization with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(600);
+      await testMintSideloadDisabledTx(user2, mintAmount, [user2.key], '');
+    });
+
     it('should reject minting an amount different from the fixed value', async () => {
       await testMintTx(
         user1,
         UInt64.from(500),
         [user1.key],
         'Not allowed to mint tokens'
+      );
+    });
+
+    it('should reject minting an amount different from the fixed value with mintSideloadDisabled', async () => {
+      const wrongMintAmount = UInt64.from(55);
+      await testMintSideloadDisabledTx(
+        user1,
+        wrongMintAmount,
+        [user1.key],
+        FungibleTokenErrors.noPermissionToMint
       );
     });
   });
@@ -1381,7 +1566,7 @@ describe('New Token Standard Mint Tests', () => {
       const burnTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.burn(
+          await tokenContract.burnWithProof(
             user2,
             UInt64.from(100),
             dynamicProof,
@@ -1455,7 +1640,7 @@ describe('New Token Standard Mint Tests', () => {
       const transfersTx = await Mina.transaction(
         { sender: user1, fee },
         async () => {
-          await tokenContract.transferCustom(
+          await tokenContract.transferCustomWithProof(
             user1,
             user2,
             UInt64.from(100),
@@ -1463,7 +1648,7 @@ describe('New Token Standard Mint Tests', () => {
             dummyVkey,
             vKeyMap
           );
-          await tokenContract.transferCustom(
+          await tokenContract.transferCustomWithProof(
             user2,
             user1,
             UInt64.from(100),
@@ -1487,6 +1672,16 @@ describe('New Token Standard Mint Tests', () => {
         programVkey,
         vKeyMap,
         expectedErrorMessage
+      );
+    });
+
+    it('should reject mint when side-loaded verification is enabled with mintSideloadDisabled', async () => {
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key, tokenAdmin.key],
+        FungibleTokenErrors.noPermissionForSideloadDisabledOperation
       );
     });
   });
