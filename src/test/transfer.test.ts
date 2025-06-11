@@ -349,7 +349,7 @@ describe('New Token Standard Transfer Tests', () => {
     it("Should prevent transfers from account that's tracking circulation with transferSideloadDisabled", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       await testTransferSideloadDisabledTx(
         tokenA,
         user3,
@@ -375,7 +375,7 @@ describe('New Token Standard Transfer Tests', () => {
     it("Should prevent transfers to account that's tracking circulation with transferSideloadDisabled", async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
-        "Can't transfer to/from the circulation account";
+        FungibleTokenErrors.noTransferFromCirculation;
       await testTransferSideloadDisabledTx(
         user1,
         tokenA,
