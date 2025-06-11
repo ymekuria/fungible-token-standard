@@ -483,7 +483,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(700),
         [user1.key],
-        'Not allowed to burn tokens'
+        FungibleTokenErrors.noPermissionToBurn
       );
     });
 
@@ -492,7 +492,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(700),
         [user1.key],
-        'Not allowed to burn tokens'
+        FungibleTokenErrors.noPermissionToBurn
       );
     });
 
@@ -524,7 +524,7 @@ describe('New Token Standard Burn Tests', () => {
         tokenContract.address,
         UInt64.from(100),
         [user2.key],
-        "Can't transfer to/from the circulation account"
+        FungibleTokenErrors.noTransferFromCirculation
       );
     });
   });
@@ -1039,7 +1039,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(50),
         [user1.key],
-        'Not allowed to burn tokens',
+        FungibleTokenErrors.noPermissionToBurn,
         0
       );
     });
@@ -1049,7 +1049,7 @@ describe('New Token Standard Burn Tests', () => {
         user1,
         UInt64.from(50),
         [user1.key],
-        'Not allowed to burn tokens',
+        FungibleTokenErrors.noPermissionToBurn,
         0
       );
     });
