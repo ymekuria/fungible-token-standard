@@ -720,6 +720,17 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
+    it('should reject minting amount outside the valid range with mintSideloadDisabled', async () => {
+      // Attempt to mint an amount outside the default MintParams range (0-1000)
+      const invalidMintAmount = UInt64.from(2000);
+      await testMintSideloadDisabledTx(
+        user1,
+        invalidMintAmount,
+        [user1.key, tokenAdmin.key],
+        FungibleTokenErrors.noPermissionToMint
+      );
+    });
+
     it('should reject minting to the circulating supply account', async () => {
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
@@ -759,6 +770,17 @@ describe('New Token Standard Mint Tests', () => {
         UInt64.from(300),
         [user1.key],
         TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED
+      );
+    });
+
+    it('should reject unauthorized minting with mintSideloadDisabled', async () => {
+      // Attempt to mint without admin signature (default MintConfig is authorized)
+      const mintAmount = UInt64.from(100);
+      await testMintSideloadDisabledTx(
+        user1,
+        mintAmount,
+        [user1.key], // Missing tokenAdmin.key
+        'the required authorization was not provided or is invalid.'
       );
     });
 
@@ -1283,6 +1305,16 @@ describe('New Token Standard Mint Tests', () => {
       await testMintTx(
         user1,
         UInt64.from(500),
+        [user1.key],
+        FungibleTokenErrors.noPermissionToMint
+      );
+    });
+
+    it('should reject minting an amount different from the fixed value with mintSideloadDisabled', async () => {
+      const wrongMintAmount = UInt64.from(55);
+      await testMintSideloadDisabledTx(
+        user1,
+        wrongMintAmount,
         [user1.key],
         FungibleTokenErrors.noPermissionToMint
       );

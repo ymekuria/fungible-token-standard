@@ -487,6 +487,15 @@ describe('New Token Standard Burn Tests', () => {
       );
     });
 
+    it('should reject burning an amount outside the valid range with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(700),
+        [user1.key],
+        'Not allowed to burn tokens'
+      );
+    });
+
     it('should reject burning from the circulating supply account', async () => {
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
@@ -1021,6 +1030,16 @@ describe('New Token Standard Burn Tests', () => {
         UInt64.from(50),
         [user1.key],
         FungibleTokenErrors.noPermissionToBurn,
+        0
+      );
+    });
+
+    it('should reject burning an amount different from the fixed value with burnSideloadDisabled', async () => {
+      await testBurnSideloadDisabledTx(
+        user1,
+        UInt64.from(50),
+        [user1.key],
+        'Not allowed to burn tokens',
         0
       );
     });
