@@ -97,9 +97,20 @@ const FlagTypes = {
 };
 
 const BitSizes = {
-  totalAmountConfigsTotal: 6, // 3 bits for mint + 3 bits for burn
-  MintRange: {Start: 0, End: 3}, // Mint config bits 0-2
-  BurnRange: {Start: 3, End: 6}, // Burn config bits 3-5
+  // Amount configs constants (MintConfig, BurnConfig)
+  AMOUNT_CONFIG: {
+    TOTAL_BITS: 6,
+    MINT: { START: 0, END: 3 },
+    BURN: { START: 3, END: 6 },
+  },
+
+  // Amount parameters constants (MintParams, BurnParams)
+  AMOUNT_PARAMS: {
+    TOTAL_BITS: 64 * 3,
+    FIXED_AMOUNT: { START: 0, END: 64 },
+    MIN_AMOUNT: { START: 64, END: 64 * 2 },
+    MAX_AMOUNT: { START: 64 * 2, END: 64 * 3 },
+  },
 }
 
 /**
