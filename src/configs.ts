@@ -15,6 +15,7 @@ export {
   EventTypes,
   ParameterTypes,
   FlagTypes,
+  MINA_TOKEN_ID
 };
 
 /**
@@ -95,6 +96,8 @@ const FlagTypes = {
   RangedAmount: Field(2),
   Unauthorized: Field(3),
 };
+
+const MINA_TOKEN_ID = Field(0);
 
 /**
  * `AmountConfig` defines shared constraints for fixed and ranged value settings
