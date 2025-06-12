@@ -96,6 +96,11 @@ const FlagTypes = {
   Unauthorized: Field(3),
 };
 
+const BitSizes = {
+  totalAmountConfigsTotal: 6, // 3 bits for mint + 3 bits for burn
+  MintRange: {Start: 0, End: 3}, // Mint config bits 0-2
+  BurnRange: {Start: 3, End: 6}, // Burn config bits 3-5
+}
 
 /**
  * `AmountConfig` defines shared constraints for fixed and ranged value settings
