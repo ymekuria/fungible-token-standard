@@ -111,6 +111,18 @@ const BitSizes = {
     MIN_AMOUNT: { START: 64, END: 64 * 2 },
     MAX_AMOUNT: { START: 64 * 2, END: 64 * 3 },
   },
+
+  // Dynamic proof config constants
+  DYNAMIC_PROOF_CONFIG: {
+    TOTAL_BITS: 28,
+    BITS_PER_CONFIG: 7,
+    INDICES: {
+      MINT: 0,
+      BURN: 1,
+      TRANSFER: 2,
+      UPDATES: 3,
+    },
+    },
 }
 
 /**
