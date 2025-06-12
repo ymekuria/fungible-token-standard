@@ -129,6 +129,8 @@ const FungibleTokenErrors = {
     'Method overridden: Use transferCustom() for side-loaded proof support instead of transfer()',
 };
 
+const MINA_TOKEN_ID = Field(1); // The native MINA token ID is always 1
+
 class FungibleToken extends TokenContract {
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
@@ -1085,7 +1087,7 @@ class FungibleToken extends TokenContract {
     // Ensure the MINA account data uses native MINA.
     Provable.if(
       shouldVerify,
-      minaAccountData.tokenId.equals(1),
+      minaAccountData.tokenId.equals(MINA_TOKEN_ID),
       Bool(true)
     ).assertTrue(FungibleTokenErrors.incorrectMinaTokenId);
 
