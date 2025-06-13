@@ -17,8 +17,8 @@ The `FungibleToken` contract stores:
 
 - `decimals`: Token decimal precision
 - `admin`: Administrator public key with special privileges
-- `packedAmountConfigs`: Configuration for mint/burn operations
-- `packedMintParams`, `packedBurnParams`: Parameters for mint/burn operations
+- `packedAmountConfigs`: Configuration for mint/burn operations (Bools which configure what type of amount checks are performed)
+- `packedMintParams`, `packedBurnParams`: Parameters for mint/burn operations (Numeric values which parametrize the amount checks)
 - `packedDynamicProofConfigs`: Configuration for dynamic proof verification
 - `vKeyMapRoot`: Root hash for verification key Merkle map (for side-loaded proofs)
 
@@ -65,6 +65,34 @@ await Mina.transaction(
 - `updateSideLoadedVKeyHash`: Update the verification key for side loaded proofs
 - `setAdmin`: Change the admin account
 
+### Updating State
+
+To update state (admin key, configs, params, verification keys), there are several methods exposed on the contract.
+
+#### Full Objects
+
+To fully replace a config or param on chain, you can use the methods:
+
+- `updateMintConfig` - update the entire mint configuration
+- `updateBurnConfig` - update the entire burn configuration
+- `updateMintParams` - update the entire mint parameters
+- `updateBurnParams` - update the entire burn parameters
+
+#### Partial Objects
+
+To replace a single key within a params object, several methods are exposed:
+
+- `updateMintFixedAmount` - update the fixed amount allowed for mint operations
+- `updateBurnFixedAmount` - update the fixed amount allowed for burn operations
+- `updateMintMinAmount` - update the minimum amount allowed for mint operations
+- `updateBurnMinAmount` - update the minimum amount allowed for burn operations
+- `updateMintMaxAmount` - update the maximum amount allowed for mint operations
+- `updateBurnMaxAmount` - update the maximum amount allowed for burn operations
+- `updateMintFixedAmountConfig` - update the fixed amount config for mint operations
+- `updateBurnFixedAmountConfig` - update the fixed amount config for burn operations
+- `updateMintRangedAmountConfig` - update the ranged amount config for mint operations
+- `updateBurnRangedAmountConfig` - update the ranged amount config for burn operations
+
 ## Running Examples
 
 The repository includes several example applications:
@@ -98,6 +126,9 @@ npm run build
 
 # Run all tests
 npm run test
+
+# Run coverage
+npm run coverage
 ```
 
 ## License
