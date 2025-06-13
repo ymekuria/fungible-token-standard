@@ -1116,123 +1116,72 @@ class FungibleToken extends TokenContract {
   }
 
   @method
-  async updateMintFixedAmount(value: UInt64) {
+  async updateAmountParameter(
+    operationType: Field,
+    parameterType: Field,
+    value: UInt64
+  ) {
     this.ensureAdminSignature(Bool(true));
+
+    const isMint = operationType.equals(OperationKeys.Mint);
+    const isBurn = operationType.equals(OperationKeys.Burn);
+
+    // Ensure operationType is either Mint or Burn
+    isMint
+      .or(isBurn)
+      .assertTrue('Invalid operation type: must be Mint or Burn');
+
+    // Get packed params based on operation type
     const packedMintParams = this.packedMintParams.getAndRequireEquals();
-    const params = MintParams.unpack(packedMintParams);
-    const oldValue = params.fixedAmount;
-    params.fixedAmount = value;
-    this.packedMintParams.set(params.pack());
-
-    this.emitEvent(
-      'AmountValueUpdate',
-      new AmountValueUpdateEvent({
-        parameterType: ParameterTypes.FixedAmount,
-        category: OperationKeys.Mint,
-        oldValue,
-        newValue: value,
-      })
-    );
-  }
-
-  @method
-  async updateMintMinAmount(value: UInt64) {
-    this.ensureAdminSignature(Bool(true));
-    const packedMintParams = this.packedMintParams.getAndRequireEquals();
-    const params = MintParams.unpack(packedMintParams);
-    const oldValue = params.minAmount;
-    params.minAmount = value;
-    params.validate();
-    this.packedMintParams.set(params.pack());
-
-    this.emitEvent(
-      'AmountValueUpdate',
-      new AmountValueUpdateEvent({
-        parameterType: ParameterTypes.MinAmount,
-        category: OperationKeys.Mint,
-        oldValue,
-        newValue: value,
-      })
-    );
-  }
-
-  @method
-  async updateMintMaxAmount(value: UInt64) {
-    this.ensureAdminSignature(Bool(true));
-    const packedMintParams = this.packedMintParams.getAndRequireEquals();
-    const params = MintParams.unpack(packedMintParams);
-    const oldValue = params.maxAmount;
-    params.maxAmount = value;
-    params.validate();
-    this.packedMintParams.set(params.pack());
-
-    this.emitEvent(
-      'AmountValueUpdate',
-      new AmountValueUpdateEvent({
-        parameterType: ParameterTypes.MaxAmount,
-        category: OperationKeys.Mint,
-        oldValue,
-        newValue: value,
-      })
-    );
-  }
-
-  @method
-  async updateBurnFixedAmount(value: UInt64) {
-    this.ensureAdminSignature(Bool(true));
     const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
-    const params = BurnParams.unpack(packedBurnParams);
-    const oldValue = params.fixedAmount;
-    params.fixedAmount = value;
-    this.packedBurnParams.set(params.pack());
 
-    this.emitEvent(
-      'AmountValueUpdate',
-      new AmountValueUpdateEvent({
-        parameterType: ParameterTypes.FixedAmount,
-        category: OperationKeys.Burn,
-        oldValue,
-        newValue: value,
-      })
+    const packedParams = Provable.if(
+      isMint,
+      packedMintParams,
+      packedBurnParams
     );
-  }
 
-  @method
-  async updateBurnMinAmount(value: UInt64) {
-    this.ensureAdminSignature(Bool(true));
-    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
-    const params = BurnParams.unpack(packedBurnParams);
-    const oldValue = params.minAmount;
-    params.minAmount = value;
-    params.validate();
-    this.packedBurnParams.set(params.pack());
+    // Unpack params (both use same structure for `.unpack()`, extended from `AmountParams` object)
+    const params = MintParams.unpack(packedParams);
 
-    this.emitEvent(
-      'AmountValueUpdate',
-      new AmountValueUpdateEvent({
-        parameterType: ParameterTypes.MinAmount,
-        category: OperationKeys.Burn,
-        oldValue,
-        newValue: value,
-      })
+    const isFixedAmount = parameterType.equals(ParameterTypes.FixedAmount);
+    const isMinAmount = parameterType.equals(ParameterTypes.MinAmount);
+    const isMaxAmount = parameterType.equals(ParameterTypes.MaxAmount);
+
+    // Ensure parameterType is valid
+    isFixedAmount
+      .or(isMinAmount)
+      .or(isMaxAmount)
+      .assertTrue(
+        'Invalid parameter type: must be FixedAmount, MinAmount, or MaxAmount'
+      );
+
+    const oldValue = Provable.switch(
+      [isFixedAmount, isMinAmount, isMaxAmount],
+      UInt64,
+      [params.fixedAmount, params.minAmount, params.maxAmount]
     );
-  }
 
-  @method
-  async updateBurnMaxAmount(value: UInt64) {
-    this.ensureAdminSignature(Bool(true));
-    const packedBurnParams = this.packedBurnParams.getAndRequireEquals();
-    const params = BurnParams.unpack(packedBurnParams);
-    const oldValue = params.maxAmount;
-    params.maxAmount = value;
+    params.fixedAmount = Provable.if(isFixedAmount, value, params.fixedAmount);
+    params.minAmount = Provable.if(isMinAmount, value, params.minAmount);
+    params.maxAmount = Provable.if(isMaxAmount, value, params.maxAmount);
+
     params.validate();
-    this.packedBurnParams.set(params.pack());
+
+    // Set packed params based on operation type
+    const newPackedParams = params.pack();
+    this.packedMintParams.set(
+      Provable.if(isMint, newPackedParams, packedMintParams)
+    );
+    this.packedBurnParams.set(
+      Provable.if(isBurn, newPackedParams, packedBurnParams)
+    );
 
     this.emitEvent(
       'AmountValueUpdate',
       new AmountValueUpdateEvent({
-        parameterType: ParameterTypes.MaxAmount,
-        category: OperationKeys.Burn,
+        parameterType,
+        category: operationType,
         oldValue,
         newValue: value,
       })
