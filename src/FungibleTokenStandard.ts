@@ -850,92 +850,70 @@ class FungibleToken extends TokenContract {
   }
 
   @method
-  async updateMintDynamicProofConfig(
-    mintDynamicProofConfig: MintDynamicProofConfig
+  async updateDynamicProofConfig(
+    operationType: Field,
+    config: DynamicProofConfig
   ) {
-    //! maybe enforce more restriction
     this.ensureAdminSignature(Bool(true));
+
+    const isMint = operationType.equals(OperationKeys.Mint);
+    const isBurn = operationType.equals(OperationKeys.Burn);
+    const isTransfer = operationType.equals(OperationKeys.Transfer);
+    const isApproveBase = operationType.equals(OperationKeys.ApproveBase);
+
+    // Ensure operationType is valid
+    isMint
+      .or(isBurn)
+      .or(isTransfer)
+      .or(isApproveBase)
+      .assertTrue(
+        'Invalid operation type: must be Mint, Burn, Transfer, or ApproveBase'
+      );
+
     const packedDynamicProofConfigs =
       this.packedDynamicProofConfigs.getAndRequireEquals();
 
-    const newPackedConfig = mintDynamicProofConfig.updatePackedConfigs(
-      packedDynamicProofConfigs
+    // Update the packed configs based on operation type
+    // Each config occupies 7 bits: Mint(0-6), Burn(7-13), Transfer(14-20), ApproveBase(21-27)
+    const allBits = packedDynamicProofConfigs.toBits(28);
+    const configBits = config.toBits();
+
+    // Create updated configurations for each operation type
+    const mintUpdatedField = Field.fromBits([
+      ...configBits,
+      ...allBits.slice(7, 28),
+    ]);
+    const burnUpdatedField = Field.fromBits([
+      ...allBits.slice(0, 7),
+      ...configBits,
+      ...allBits.slice(14, 28),
+    ]);
+    const transferUpdatedField = Field.fromBits([
+      ...allBits.slice(0, 14),
+      ...configBits,
+      ...allBits.slice(21, 28),
+    ]);
+    const approveUpdatedField = Field.fromBits([
+      ...allBits.slice(0, 21),
+      ...configBits,
+    ]);
+
+    const newPackedConfig = Provable.switch(
+      [isMint, isBurn, isTransfer, isApproveBase],
+      Field,
+      [
+        mintUpdatedField,
+        burnUpdatedField,
+        transferUpdatedField,
+        approveUpdatedField,
+      ]
     );
     this.packedDynamicProofConfigs.set(newPackedConfig);
 
     this.emitEvent(
       'DynamicProofConfigUpdate',
       new DynamicProofConfigUpdateEvent({
-        operationType: OperationKeys.Mint,
-        newConfig: newPackedConfig,
-      })
-    );
-  }
-
-  @method
-  async updateBurnDynamicProofConfig(
-    burnDynamicProofConfig: BurnDynamicProofConfig
-  ) {
-    //! maybe enforce more restriction
-    this.ensureAdminSignature(Bool(true));
-    const packedDynamicProofConfigs =
-      this.packedDynamicProofConfigs.getAndRequireEquals();
-
-    const newPackedConfig = burnDynamicProofConfig.updatePackedConfigs(
-      packedDynamicProofConfigs
-    );
-    this.packedDynamicProofConfigs.set(newPackedConfig);
-
-    this.emitEvent(
-      'DynamicProofConfigUpdate',
-      new DynamicProofConfigUpdateEvent({
-        operationType: OperationKeys.Burn,
-        newConfig: newPackedConfig,
-      })
-    );
-  }
-
-  @method
-  async updateTransferDynamicProofConfig(
-    transferDynamicProofConfig: TransferDynamicProofConfig
-  ) {
-    //! maybe enforce more restriction
-    this.ensureAdminSignature(Bool(true));
-    const packedDynamicProofConfigs =
-      this.packedDynamicProofConfigs.getAndRequireEquals();
-
-    const newPackedConfig = transferDynamicProofConfig.updatePackedConfigs(
-      packedDynamicProofConfigs
-    );
-    this.packedDynamicProofConfigs.set(newPackedConfig);
-
-    this.emitEvent(
-      'DynamicProofConfigUpdate',
-      new DynamicProofConfigUpdateEvent({
-        operationType: OperationKeys.Transfer,
-        newConfig: newPackedConfig,
-      })
-    );
-  }
-
-  @method
-  async updateUpdatesDynamicProofConfig(
-    updatesDynamicProofConfig: UpdatesDynamicProofConfig
-  ) {
-    //! maybe enforce more restriction
-    this.ensureAdminSignature(Bool(true));
-    const packedDynamicProofConfigs =
-      this.packedDynamicProofConfigs.getAndRequireEquals();
-
-    const newPackedConfig = updatesDynamicProofConfig.updatePackedConfigs(
-      packedDynamicProofConfigs
-    );
-    this.packedDynamicProofConfigs.set(newPackedConfig);
-
-    this.emitEvent(
-      'DynamicProofConfigUpdate',
-      new DynamicProofConfigUpdateEvent({
-        operationType: OperationKeys.ApproveBase,
+        operationType,
         newConfig: newPackedConfig,
       })
     );
