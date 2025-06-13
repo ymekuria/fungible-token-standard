@@ -38,33 +38,6 @@ const burnParams = BurnParams.create(BurnConfig.default, {
   maxAmount: UInt64.from(1500),
 });
 
-await Mina.transaction(
-  {
-    sender: deployer,
-    fee,
-  },
-  async () => {
-    AccountUpdate.fundNewAccount(deployer, 2);
-    await token.deploy({
-      symbol: 'TKN', // Token symbol
-      src: 'https://github.com/o1-labs-XT/fungible-token-contract/blob/main/src/FungibleTokenContract.ts', // Source code reference
-    });
-
-    await token.initialize(
-      adminPublicKey, // Admin account
-      UInt8.from(9), // Decimals (e.g., 9)
-      MintConfig.default,
-      mintParams,
-      BurnConfig.default,
-      burnParams,
-      MintDynamicProofConfig.default,
-      BurnDynamicProofConfig.default,
-      TransferDynamicProofConfig.default,
-      UpdatesDynamicProofConfig.default
-    );
-  }
-);
-
 console.log('Deploying token contract.');
 const deployTx = await Mina.transaction(
   {
