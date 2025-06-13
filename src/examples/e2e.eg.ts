@@ -1,5 +1,5 @@
 import { AccountUpdate, Mina, PrivateKey, UInt8, UInt64 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../FungibleTokenStandard.js';
+import { FungibleToken, VKeyMerkleMap } from '../FungibleTokenContract.js';
 import { VerificationKey } from 'o1js';
 import {
   generateDummyDynamicProof,
@@ -38,6 +38,33 @@ const burnParams = BurnParams.create(BurnConfig.default, {
   maxAmount: UInt64.from(1500),
 });
 
+await Mina.transaction(
+  {
+    sender: deployer,
+    fee,
+  },
+  async () => {
+    AccountUpdate.fundNewAccount(deployer, 2);
+    await token.deploy({
+      symbol: 'TKN', // Token symbol
+      src: 'https://github.com/o1-labs-XT/fungible-token-contract/blob/main/src/FungibleTokenContract.ts', // Source code reference
+    });
+
+    await token.initialize(
+      adminPublicKey, // Admin account
+      UInt8.from(9), // Decimals (e.g., 9)
+      MintConfig.default,
+      mintParams,
+      BurnConfig.default,
+      burnParams,
+      MintDynamicProofConfig.default,
+      BurnDynamicProofConfig.default,
+      TransferDynamicProofConfig.default,
+      UpdatesDynamicProofConfig.default
+    );
+  }
+);
+
 console.log('Deploying token contract.');
 const deployTx = await Mina.transaction(
   {
@@ -49,7 +76,7 @@ const deployTx = await Mina.transaction(
 
     await token.deploy({
       symbol: 'DNB',
-      src: 'https://github.com/o1-labs-XT/fungible-token-standard/blob/main/src/NewTokenStandard.ts',
+      src: 'https://github.com/o1-labs-XT/fungible-token-contract/blob/main/src/FungibleTokenContract.ts',
     });
 
     await token.initialize(
@@ -105,11 +132,7 @@ equal(alexaBalanceBeforeMint, 0n);
 console.log('Transferring tokens from Alexa to Billy');
 const transferTx = await Mina.transaction({ sender: alexa, fee }, async () => {
   AccountUpdate.fundNewAccount(alexa, 1);
-  await token.transferCustom(
-    alexa,
-    billy,
-    mintParams.maxAmount,
-  );
+  await token.transferCustom(alexa, billy, mintParams.maxAmount);
 });
 
 await transferTx.prove();
@@ -128,10 +151,7 @@ equal(billyBalanceAfterTransfer, mintParams.maxAmount.toBigInt());
 
 console.log("Burning Billy's tokens");
 const burnTx = await Mina.transaction({ sender: billy, fee }, async () => {
-  await token.burn(
-    billy,
-    burnParams.fixedAmount,
-  );
+  await token.burn(billy, burnParams.fixedAmount);
 });
 await burnTx.prove();
 burnTx.sign([billy.key]);

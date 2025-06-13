@@ -22,27 +22,36 @@ The `FungibleToken` contract stores:
 - `packedDynamicProofConfigs`: Configuration for dynamic proof verification
 - `vKeyMapRoot`: Root hash for verification key Merkle map (for side-loaded proofs)
 
-### Deploy Arguments
+### Deploy Instructions
 
-When deploying a token contract:
+When deploying a token contract, deploy it with a reference to the token contract implementation, and initialize it with your configuration:
 
 ```typescript
-await token.deploy({
-  symbol: "TKN",  // Token symbol
-  src: "https://github.com/o1-labs-XT/fungible-token-contract/blob/main/src/FungibleTokenContract.ts"  // Source code reference
-});
+await Mina.transaction(
+  {
+    sender: deployer,
+    fee,
+  },
+  async () => {
+    AccountUpdate.fundNewAccount(deployer, 2);
+    await token.deploy({
+      symbol: 'TKN', // Token symbol
+      src: 'https://github.com/o1-labs-XT/fungible-token-contract/blob/main/src/FungibleTokenContract.ts', // Source code reference
+    });
 
-await token.initialize(
-  adminPublicKey,  // Admin account
-  UInt8.from(9),   // Decimals (e.g., 9)
-  MintConfig.default,
-  mintParams,
-  BurnConfig.default,
-  burnParams,
-  MintDynamicProofConfig.default,
-  BurnDynamicProofConfig.default,
-  TransferDynamicProofConfig.default,
-  UpdatesDynamicProofConfig.default
+    await token.initialize(
+      adminPublicKey, // Admin account
+      UInt8.from(9), // Decimals (e.g., 9)
+      MintConfig.default,
+      mintParams,
+      BurnConfig.default,
+      burnParams,
+      MintDynamicProofConfig.default,
+      BurnDynamicProofConfig.default,
+      TransferDynamicProofConfig.default,
+      UpdatesDynamicProofConfig.default
+    );
+  }
 );
 ```
 
@@ -51,99 +60,19 @@ await token.initialize(
 - `mint/mintWithProof`: Create new tokens
 - `burn/burnWithProof`: Destroy tokens
 - `transferCustom/transferCustomWithProof`: Transfer tokens between accounts
-- `getBalanceOf`: Query account balance
-- `getCirculating`: Get total circulating supply
+- `approveBaseCustom/approveBaseCustomWithProof`: Approve custom token account updates
 - `updateMintConfig/updateBurnConfig`: Update token configuration
+- `updateSideLoadedVKeyHash`: Update the verification key for side loaded proofs
 - `setAdmin`: Change the admin account
-
-### Events
-
-- `MintEvent`: Emitted when tokens are minted
-- `BurnEvent`: Emitted when tokens are burned
-- `TransferEvent`: Emitted when tokens are transferred
-- `BalanceChangeEvent`: Tracks balance changes
-- `SetAdminEvent`: Admin account changes
-- Various configuration update events
-
-## Code Examples
-
-### Initialize a Token
-
-```typescript
-import { FungibleToken, MintConfig, MintParams, BurnConfig, BurnParams } from './fungible-token-standard';
-
-// Create token contract instance
-const token = new FungibleToken(contractPublicKey);
-
-// Configure token parameters
-const mintParams = MintParams.create(MintConfig.default, {
-  minAmount: UInt64.from(1),
-  maxAmount: UInt64.from(1000),
-});
-
-const burnParams = BurnParams.create(BurnConfig.default, {
-  minAmount: UInt64.from(100),
-  maxAmount: UInt64.from(1500),
-});
-
-// Deploy and initialize
-await token.deploy({
-  symbol: "TKN",
-  src: "https://github.com/your-repo/token-contract"
-});
-
-await token.initialize(
-  adminPublicKey,
-  UInt8.from(9),
-  MintConfig.default,
-  mintParams,
-  BurnConfig.default,
-  burnParams,
-  MintDynamicProofConfig.default,
-  BurnDynamicProofConfig.default,
-  TransferDynamicProofConfig.default,
-  UpdatesDynamicProofConfig.default
-);
-```
-
-### Mint Tokens
-
-```typescript
-// Mint tokens to an account
-await token.mint(recipientPublicKey, UInt64.from(1000));
-```
-
-### Transfer Tokens
-
-```typescript
-// Transfer tokens between accounts
-await token.transferCustom(
-  senderPublicKey,
-  recipientPublicKey,
-  UInt64.from(500)
-);
-```
-
-### Burn Tokens
-
-```typescript
-// Burn tokens from an account
-await token.burn(accountPublicKey, UInt64.from(200));
-```
-
-### Check Balance
-
-```typescript
-// Query account balance
-const balance = await token.getBalanceOf(accountPublicKey);
-console.log(`Account balance: ${balance.toString()}`);
-```
 
 ## Running Examples
 
 The repository includes several example applications:
 
 ```sh
+# Build the project
+npm run build
+
 # Run the end-to-end example
 node build/src/examples/e2e.eg.js
 
@@ -158,17 +87,8 @@ node build/src/examples/concurrent-transfer.eg.js
 
 ### Limitations
 
-- **Transaction Size**: Complex operations with multiple account updates may exceed Mina's transaction size limits
-- **Proof Generation**: Side-loaded proofs require additional computational resources
-- **Account Updates**: Limited to 9 account updates per transaction
-
-### Best Practices
-
-- Configure token parameters carefully based on your use case
-- For public token operations, use standard methods (mint, burn, transferCustom)
-- For private operations requiring ZK proofs, use the WithProof variants
-- Consider the trade-offs between fixed and ranged amount configurations
-- Use admin privileges judiciously for security-critical operations
+- **Transaction Size**: Complex operations with multiple account updates may exceed Mina's transaction size limits.  Each method, individually, will fit within the account update limit, but some methods, when combined in a single transaction, will not.
+- **Proof Generation**: Side-loaded proofs require the computationally-expensive proving operations to be done before submitting a transaction.  Also, each third party contract using a token with side-loaded proofs will need access to the verification key merkle map.  The token developer must make that map public in order for others to call the contract methods successfully.
 
 ## Build and Test
 
@@ -178,12 +98,6 @@ npm run build
 
 # Run all tests
 npm run test
-
-# Run tests in watch mode
-npm run testw
-
-# Run test coverage
-npm run coverage
 ```
 
 ## License
