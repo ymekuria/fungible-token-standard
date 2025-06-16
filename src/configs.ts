@@ -278,7 +278,12 @@ class BurnConfig extends AmountConfig {
    * @returns A `BurnConfig` instance constructed from bits 3–5.
    */
   static unpack(packedConfigs: Field) {
-    const serializedBurnConfig = packedConfigs.toBits(6).slice(3, 6);
+    const serializedBurnConfig = packedConfigs
+      .toBits(BitSizes.AMOUNT_CONFIG.TOTAL_BITS)
+      .slice(
+        BitSizes.AMOUNT_CONFIG.BURN.START,
+        BitSizes.AMOUNT_CONFIG.BURN.END
+      );
     const [unauthorized, fixedAmount, rangedAmount] = serializedBurnConfig;
 
     return new this({
