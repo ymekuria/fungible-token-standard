@@ -122,8 +122,8 @@ const BitSizes = {
       TRANSFER: 2,
       UPDATES: 3,
     },
-    },
-}
+  },
+};
 
 /**
  * `AmountConfig` defines shared constraints for fixed and ranged value settings
@@ -205,7 +205,12 @@ class MintConfig extends AmountConfig {
    * @returns A `MintConfig` instance constructed from the first 3 bits of the field.
    */
   static unpack(packedConfigs: Field) {
-    const serializedMintConfig = packedConfigs.toBits(6).slice(0, 3);
+    const serializedMintConfig = packedConfigs
+      .toBits(BitSizes.AMOUNT_CONFIG.TOTAL_BITS)
+      .slice(
+        BitSizes.AMOUNT_CONFIG.MINT.START,
+        BitSizes.AMOUNT_CONFIG.MINT.END
+      );
     const [unauthorized, fixedAmount, rangedAmount] = serializedMintConfig;
 
     return new this({
