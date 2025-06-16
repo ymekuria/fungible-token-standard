@@ -230,12 +230,17 @@ class MintConfig extends AmountConfig {
    * @returns A new `Field` with updated mint config and preserved burn config.
    */
   updatePackedConfigs(packedConfigs: Field) {
-    const serializedConfigs = packedConfigs.toBits(6);
+    const serializedConfigs = packedConfigs.toBits(
+      BitSizes.AMOUNT_CONFIG.TOTAL_BITS
+    );
     const serializedMintConfig = this.toBits();
 
     const updatedPackedConfigs = Field.fromBits([
       ...serializedMintConfig,
-      ...serializedConfigs.slice(3, 6),
+      ...serializedConfigs.slice(
+        BitSizes.AMOUNT_CONFIG.BURN.START,
+        BitSizes.AMOUNT_CONFIG.BURN.END
+      ),
     ]);
 
     return updatedPackedConfigs;
