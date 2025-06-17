@@ -190,7 +190,7 @@ class AmountConfig extends Struct({
    * @returns A packed `Field` combining both configs.
    */
   static packConfigs(configs: [AmountConfig, AmountConfig]): Field {
-    if (configs.length !== 2)
+    if (configs.length !== CONFIG_REQUIREMENTS.AMOUNT_CONFIG_COUNT)
       throw new Error(ConfigErrors.invalidAmountConfigCount);
     return Field.fromBits([...configs[0].toBits(), ...configs[1].toBits()]);
   }
@@ -647,7 +647,7 @@ class DynamicProofConfig extends Struct({
    * @returns Packed 24-bit Field.
    */
   static packConfigs(configs: DynamicProofConfig[]): Field {
-    if (configs.length !== 4)
+    if (configs.length !== CONFIG_REQUIREMENTS.DYNAMIC_PROOF_CONFIG_COUNT)
       throw new Error(ConfigErrors.invalidDynamicProofConfigCount);
 
     const bits = configs.flatMap((config) => config.toBits());
