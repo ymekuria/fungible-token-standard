@@ -96,6 +96,12 @@ const FlagTypes = {
   Unauthorized: Field(3),
 };
 
+/**
+ * Height of the Merkle tree used for verification key storage.
+ * Used to configure the IndexedMerkleMap for VKeyMerkleMap.
+ */
+const MERKLE_HEIGHT = 3;
+
 const BitSizes = {
   // Amount configs constants (MintConfig, BurnConfig)
   AMOUNT_CONFIG: {
