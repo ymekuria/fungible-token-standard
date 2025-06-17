@@ -35,13 +35,13 @@ import {
   EventTypes,
   ParameterTypes,
   FlagTypes,
+  MERKLE_HEIGHT,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
 const { IndexedMerkleMap } = Experimental;
 
-const height = 3;
-class VKeyMerkleMap extends IndexedMerkleMap(height) {}
+class VKeyMerkleMap extends IndexedMerkleMap(MERKLE_HEIGHT) {}
 
 export {
   FungibleTokenErrors,

@@ -15,6 +15,7 @@ export {
   EventTypes,
   ParameterTypes,
   FlagTypes,
+  MERKLE_HEIGHT,
 };
 
 /**
