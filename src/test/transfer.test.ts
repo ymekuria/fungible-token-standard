@@ -332,7 +332,7 @@ describe('Fungible Token - Transfer Tests', () => {
       );
     });
 
-    it("Should prevent transfers from account that's tracking circulation", async () => {
+    it('Should prevent transfers from account that\'s tracking circulation', async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
@@ -345,7 +345,7 @@ describe('Fungible Token - Transfer Tests', () => {
       );
     });
 
-    it("Should prevent transfers from account that's tracking circulation using sideload-disabled method", async () => {
+    it('Should prevent transfers from account that\'s tracking circulation using sideload-disabled method', async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
@@ -358,7 +358,7 @@ describe('Fungible Token - Transfer Tests', () => {
       );
     });
 
-    it("Should prevent transfers to account that's tracking circulation", async () => {
+    it('Should prevent transfers to account that\'s tracking circulation', async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
@@ -371,7 +371,7 @@ describe('Fungible Token - Transfer Tests', () => {
       );
     });
 
-    it("Should prevent transfers to account that's tracking circulation using sideload-disabled method", async () => {
+    it('Should prevent transfers to account that\'s tracking circulation using sideload-disabled method', async () => {
       const transferAmount = UInt64.from(100);
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;

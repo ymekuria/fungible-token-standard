@@ -474,7 +474,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       );
     });
 
-    it("should reject manually constructed transfers from the account that's tracking circulation", async () => {
+    it('should reject manually constructed transfers from the account that\'s tracking circulation', async () => {
       const sendAmount = UInt64.from(10);
 
       const updateSend = AccountUpdate.createSigned(
@@ -510,7 +510,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       );
     });
 
-    it("should reject manually constructed transfers to the account that's tracking circulation", async () => {
+    it('should reject manually constructed transfers to the account that\'s tracking circulation', async () => {
       const sendAmount = UInt64.from(10);
 
       const updateSend = AccountUpdate.createSigned(
@@ -670,7 +670,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       );
     });
 
-    it("should reject manually constructed transfers from the account that's tracking circulation using sideload-disabled method", async () => {
+    it('should reject manually constructed transfers from the account that\'s tracking circulation using sideload-disabled method', async () => {
       const sendAmount = UInt64.from(10);
 
       const updateSend = AccountUpdate.createSigned(
@@ -704,7 +704,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       );
     });
 
-    it("should reject manually constructed transfers to the account that's tracking circulation using sideload-disabled method", async () => {
+    it('should reject manually constructed transfers to the account that\'s tracking circulation using sideload-disabled method', async () => {
       const sendAmount = UInt64.from(10);
 
       const updateSend = AccountUpdate.createSigned(
@@ -740,7 +740,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
   });
 
   describe('Account Permissions', () => {
-    it("should reject a transaction that's changing the account permission for receive", async () => {
+    it('should reject a transaction that\'s changing the account permission for receive', async () => {
       const permissions = Mina.getAccount(
         user2,
         tokenContract.deriveTokenId()
@@ -773,7 +773,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
         FungibleTokenErrors.noPermissionChangeAllowed
       );
     });
-    it("should reject a transaction that's changing the account permission for receive with approveBaseSideloadDisabled", async () => {
+    it('should reject a transaction that\'s changing the account permission for receive with approveBaseSideloadDisabled', async () => {
       const permissions = Mina.getAccount(
         user2,
         tokenContract.deriveTokenId()
