@@ -38,6 +38,21 @@ const ConfigErrors = {
 };
 
 /**
+ * Constants defining required sizes and counts for configurations
+ */
+const CONFIG_REQUIREMENTS = {
+  /**
+   * Number of dynamic proof configs in a complete set (mint, burn, transfer, updates)
+   */
+  DYNAMIC_PROOF_CONFIG_COUNT: 4,
+
+  /**
+   * Number of amount configs in a complete set (mint, burn)
+   */
+  AMOUNT_CONFIG_COUNT: 2,
+};
+
+/**
  * `OperationKeys` provides symbolic names for the different token operations
  * that can have associated side-loaded verification keys.
  *
