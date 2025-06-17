@@ -48,7 +48,7 @@ import {
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
 const proofsEnabled = false;
 
-describe('New Token Standard Mint Tests', () => {
+describe('Fungible Token - Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
 
   let fee: number,
@@ -405,8 +405,8 @@ describe('New Token Standard Mint Tests', () => {
     }
   }
 
-  describe('Deploy & initialize', () => {
-    it('should deploy tokenA contract', async () => {
+  describe('Contract Deployment and Initialization', () => {
+    it('should deploy token contract successfully', async () => {
       const tx = await Mina.transaction({ sender: deployer, fee }, async () => {
         AccountUpdate.fundNewAccount(deployer);
 
@@ -494,13 +494,13 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should initialize tokenA contract', async () => {
+    it('should initialize token contract successfully', async () => {
       await testInitializeTx([deployer.key, tokenA.key]);
     });
 
     //! Throws an error because the first `initialize` has set the permissions to impossible
     //! not because of the `provedState` precondition
-    it('Should prevent calling `initialize()` a second time', async () => {
+    it('should prevent calling `initialize()` a second time', async () => {
       const expectedErrorMessage =
         "Cannot update field 'permissions' because permission for this field is 'Impossible'";
       await testInitializeTx([deployer.key, tokenA.key], expectedErrorMessage);
@@ -542,12 +542,12 @@ describe('New Token Standard Mint Tests', () => {
     });
   });
 
-  describe('Mint Config: Default: Authorized/Ranged', () => {
-    it('should mint an amount within the valid range: user', async () => {
+  describe('Mint Operations - Default Config (Authorized/Ranged)', () => {
+    it('should mint amount within valid range: user', async () => {
       await testMintTx(user1, UInt64.from(200), [user1.key, tokenAdmin.key]);
     });
 
-    it('should mint an amount within the valid range with mintSideloadDisabled', async () => {
+    it('should mint amount within valid range using sideload-disabled method', async () => {
       const mintAmount = UInt64.from(100);
       // User1 signs for the AU, tokenAdmin signs because default MintConfig is authorized
       await testMintSideloadDisabledTx(
@@ -559,7 +559,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject minting an amount outside the valid range', async () => {
+    it('should reject minting amount outside valid range', async () => {
       await testMintTx(
         user1,
         UInt64.from(1100),
@@ -568,7 +568,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject minting amount outside the valid range with mintSideloadDisabled', async () => {
+    it('should reject minting amount outside the valid range using sideload-disabled method', async () => {
       // Attempt to mint an amount outside the default MintParams range (0-1000)
       const invalidMintAmount = UInt64.from(2000);
       await testMintSideloadDisabledTx(
@@ -579,7 +579,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject minting amount outside the valid range with mintSideloadDisabled', async () => {
+    it('should reject minting amount outside the valid range using sideload-disabled method', async () => {
       // Attempt to mint an amount outside the default MintParams range (0-1000)
       const invalidMintAmount = UInt64.from(2000);
       await testMintSideloadDisabledTx(
@@ -590,7 +590,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject minting to the circulating supply account', async () => {
+    it('should reject minting to circulating supply account', async () => {
       const expectedErrorMessage =
         FungibleTokenErrors.noTransferFromCirculation;
       try {
@@ -613,7 +613,7 @@ describe('New Token Standard Mint Tests', () => {
       }
     });
 
-    it('should reject minting to the circulation supply account with mintSideloadDisabled', async () => {
+    it('should reject minting to circulating supply account using sideload-disabled method', async () => {
       const mintAmount = UInt64.from(100);
       await testMintSideloadDisabledTx(
         tokenContract.address, // recipient is the contract itself
@@ -632,7 +632,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject unauthorized minting with mintSideloadDisabled', async () => {
+    it('should reject unauthorized minting using sideload-disabled method', async () => {
       // Attempt to mint without admin signature (default MintConfig is authorized)
       const mintAmount = UInt64.from(100);
       await testMintSideloadDisabledTx(
@@ -643,7 +643,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject unauthorized minting with mintSideloadDisabled', async () => {
+    it('should reject unauthorized minting using sideload-disabled method', async () => {
       // Attempt to mint without admin signature (default MintConfig is authorized)
       const mintAmount = UInt64.from(100);
       await testMintSideloadDisabledTx(
@@ -655,8 +655,8 @@ describe('New Token Standard Mint Tests', () => {
     });
   });
 
-  describe('Update Mint Config: Unauthorized/Fixed', () => {
-    it('should reject mintConfig update when both range and fixed mint are enabled', async () => {
+  describe('Mint Config Updates - Unauthorized/Fixed Mode', () => {
+    it('should reject mint config update when both range and fixed mint are enabled', async () => {
       const mintConfig = new MintConfig({
         unauthorized: Bool(true),
         fixedAmount: Bool(true),
@@ -672,7 +672,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mintConfig update when unauthorized by the admin', async () => {
+    it('should reject mint config update when unauthorized by admin', async () => {
       const mintConfig = new MintConfig({
         unauthorized: Bool(true),
         fixedAmount: Bool(true),
@@ -749,7 +749,7 @@ describe('New Token Standard Mint Tests', () => {
       expect(mintConfigAfter.rangedAmount).toEqual(newFixedAmountValue.not());
     });
 
-    it('should reject mint fixed amount config update via field-specific function when unauthorized by the admin', async () => {
+    it('should reject mint fixed amount config update via field-specific function when unauthorized by admin', async () => {
       const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
       const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
       const originalFixedAmount = mintConfigBefore.fixedAmount;
@@ -797,7 +797,7 @@ describe('New Token Standard Mint Tests', () => {
       expect(mintConfigAfter.unauthorized).toEqual(originalUnauthorized);
     });
 
-    it('should reject rangedAmount config update via field-specific function when unauthorized by the admin', async () => {
+    it('should reject rangedAmount config update via field-specific function when unauthorized by admin', async () => {
       const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
       const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
       const originalFixedAmount = mintConfigBefore.fixedAmount;
@@ -846,7 +846,7 @@ describe('New Token Standard Mint Tests', () => {
       expect(mintConfigAfter.rangedAmount).toEqual(originalRangedAmount);
     });
 
-    it('should reject unauthorized config update via field-specific function when unauthorized by the admin', async () => {
+    it('should reject unauthorized config update via field-specific function when unauthorized by admin', async () => {
       const packedConfigsBefore = tokenContract.packedAmountConfigs.get();
       const mintConfigBefore = MintConfig.unpack(packedConfigsBefore);
       const originalFixedAmount = mintConfigBefore.fixedAmount;
@@ -874,8 +874,8 @@ describe('New Token Standard Mint Tests', () => {
     });
   });
 
-  describe('Update Mint Params', () => {
-    it('should reject mintParams update given an invalid range', async () => {
+  describe('Mint Parameter Updates', () => {
+    it('should reject mint params update with invalid range', async () => {
       mintParams = new MintParams({
         fixedAmount: UInt64.from(200),
         minAmount: UInt64.from(500),
@@ -891,7 +891,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mintParams update when unauthorized by the admin', async () => {
+    it('should reject mint params update when unauthorized by admin', async () => {
       mintParams = new MintParams({
         fixedAmount: UInt64.from(300),
         minAmount: UInt64.from(100),
@@ -962,7 +962,7 @@ describe('New Token Standard Mint Tests', () => {
       expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount);
     });
 
-    it('should reject mint fixed amount update via field-specific function when unauthorized by the admin', async () => {
+    it('should reject mint fixed amount update via field-specific function when unauthorized by admin', async () => {
       1;
       const paramsBeforeAttempt = MintParams.unpack(
         tokenContract.packedMintParams.get()
@@ -1016,7 +1016,7 @@ describe('New Token Standard Mint Tests', () => {
       expect(paramsAfterUpdate.maxAmount).toEqual(originalMaxAmount); // Should not change
     });
 
-    it('should reject mint min amount update via field-specific function when unauthorized by the admin', async () => {
+    it('should reject mint min amount update via field-specific function when unauthorized by admin', async () => {
       const paramsBeforeAttempt = MintParams.unpack(
         tokenContract.packedMintParams.get()
       );
@@ -1094,7 +1094,7 @@ describe('New Token Standard Mint Tests', () => {
       expect(paramsAfterUpdate.minAmount).toEqual(originalMinAmount);
     });
 
-    it('should reject mint max amount update via field-specific function when unauthorized by the admin', async () => {
+    it('should reject mint max amount update via field-specific function when unauthorized by admin', async () => {
       const paramsBeforeAttempt = MintParams.unpack(
         tokenContract.packedMintParams.get()
       );
@@ -1150,17 +1150,17 @@ describe('New Token Standard Mint Tests', () => {
     });
   });
 
-  describe('Mint Config: Unauthorized/Fixed', () => {
+  describe('Mint Operations - Unauthorized/Fixed Mode', () => {
     it('should allow minting without authorization', async () => {
       await testMintTx(user2, UInt64.from(600), [user2.key], undefined, 1);
     });
 
-    it('should allow minting without authorization with mintSideloadDisabled', async () => {
+    it('should allow minting without authorization using sideload-disabled method', async () => {
       const mintAmount = UInt64.from(600);
       await testMintSideloadDisabledTx(user2, mintAmount, [user2.key], '');
     });
 
-    it('should reject minting an amount different from the fixed value', async () => {
+    it('should reject minting amount different from fixed value', async () => {
       await testMintTx(
         user1,
         UInt64.from(500),
@@ -1169,7 +1169,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject minting an amount different from the fixed value with mintSideloadDisabled', async () => {
+    it('should reject minting amount different from fixed value using sideload-disabled method', async () => {
       const wrongMintAmount = UInt64.from(55);
       await testMintSideloadDisabledTx(
         user1,
@@ -1179,7 +1179,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject minting an amount different from the fixed value with mintSideloadDisabled', async () => {
+    it('should reject minting amount different from fixed value using sideload-disabled method', async () => {
       const wrongMintAmount = UInt64.from(55);
       await testMintSideloadDisabledTx(
         user1,
@@ -1190,8 +1190,8 @@ describe('New Token Standard Mint Tests', () => {
     });
   });
 
-  describe('Update Mint Dynamic Proof Config', () => {
-    it('should reject mintDynamicProofConfig update when unauthorized by the admin', async () => {
+  describe('Dynamic Proof Config Updates', () => {
+    it('should reject mintDynamicProofConfig update when unauthorized by admin', async () => {
       try {
         let mintDynamicProofConfig = MintDynamicProofConfig.default;
         mintDynamicProofConfig.shouldVerify = Bool(true);
@@ -1214,7 +1214,7 @@ describe('New Token Standard Mint Tests', () => {
       }
     });
 
-    it('update mint dynamic proof config: enable side-loaded verification', async () => {
+    it('should update mint dynamic proof config: enable side-loaded verification', async () => {
       let mintDynamicProofConfig = MintDynamicProofConfig.default;
       mintDynamicProofConfig.shouldVerify = Bool(true);
 
@@ -1235,8 +1235,8 @@ describe('New Token Standard Mint Tests', () => {
     });
   });
 
-  describe('Update Side-loaded vKey Hash', () => {
-    it('should reject updating side-loaded vKey hash: unauthorized by the admin', async () => {
+  describe('Side-loaded Verification Key Updates', () => {
+    it('should reject updating sideloaded verification key hash: unauthorized by admin', async () => {
       const expectedErrorMessage =
         'the required authorization was not provided or is invalid.';
       await updateSLVkeyHashTx(
@@ -1249,7 +1249,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject updating side-loaded vKey hash: invalid operationKey', async () => {
+    it('should reject updating sideloaded verification key hash: invalid operationKey', async () => {
       const expectedErrorMessage = FungibleTokenErrors.invalidOperationKey;
       await updateSLVkeyHashTx(
         user1,
@@ -1261,7 +1261,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject updating side-loaded vKey hash: non-compliant vKeyMap', async () => {
+    it('should reject updating sideloaded verification key hash: non-compliant vKeyMap', async () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
@@ -1290,7 +1290,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should update the side-loaded vKey hash for mints', async () => {
+    it('should update the sideloaded verification key hash for mints', async () => {
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1304,8 +1304,8 @@ describe('New Token Standard Mint Tests', () => {
   });
 
   // SLV = Side-Loaded Verification (enabled)
-  describe('Mint Config: Unauthorized/Ranged/SLV Mint', () => {
-    it('should reject mint given a non-compliant vKeyMap', async () => {
+  describe('Side-loaded Mint Operations - Unauthorized/Ranged Mode', () => {
+    it('should reject mint with non-compliant vKeyMap', async () => {
       let tamperedVKeyMap = vKeyMap.clone();
       tamperedVKeyMap.insert(6n, Field.random());
 
@@ -1322,7 +1322,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given a non-compliant vKey hash', async () => {
+    it('should reject mint with non-compliant vKey hash', async () => {
       const expectedErrorMessage = FungibleTokenErrors.invalidSideLoadedVKey;
 
       await testMintSLTx(
@@ -1338,7 +1338,7 @@ describe('New Token Standard Mint Tests', () => {
 
     //! only passes when `proofsEnabled=true`
     (!proofsEnabled ? it.skip : it)(
-      'should reject mint given an invalid proof',
+      'should reject mint with invalid proof',
       async () => {
         await program2.compile();
         const mintAmount = UInt64.from(600);
@@ -1360,7 +1360,7 @@ describe('New Token Standard Mint Tests', () => {
       }
     );
 
-    it('should mint given a valid proof', async () => {
+    it('should mint with valid proof', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
@@ -1396,7 +1396,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireTokenIdMatch precondition', async () => {
+    it('should reject mint with invalid proof requireTokenIdMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(Field(1), user1);
 
       const mintAmount = UInt64.from(600);
@@ -1412,7 +1412,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireMinaBalanceMatch precondition', async () => {
+    it('should reject mint with invalid proof requireMinaBalanceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user1
@@ -1444,7 +1444,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireCustomTokenBalanceMatch precondition', async () => {
+    it('should reject mint with invalid proof requireCustomTokenBalanceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
@@ -1481,7 +1481,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint given an invalid proof requireMinaNonceMatch precondition', async () => {
+    it('should reject mint with invalid proof requireMinaNonceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user1
@@ -1517,7 +1517,7 @@ describe('New Token Standard Mint Tests', () => {
     });
 
     //! supposed to fail but didn't -> we might need to remove the token account nonce precondition
-    it.skip('should reject mint given an invalid proof requireCustomTokenNonceMatch precondition', async () => {
+    it.skip('should reject mint with invalid proof requireCustomTokenNonceMatch precondition', async () => {
       const dynamicProof = await generateDynamicProof(
         tokenContract.deriveTokenId(),
         user2
@@ -1564,7 +1564,7 @@ describe('New Token Standard Mint Tests', () => {
       );
     });
 
-    it('should reject mint when side-loaded verification is enabled with mintSideloadDisabled', async () => {
+    it('should reject mint when side-loaded verification is enabled using sideload-disabled method', async () => {
       const mintAmount = UInt64.from(100);
       await testMintSideloadDisabledTx(
         user1,
