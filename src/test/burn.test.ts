@@ -45,7 +45,7 @@ import {
   TEST_ERROR_MESSAGES,
 } from './constants.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('Fungible Token - Burn Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -609,7 +609,7 @@ describe('Fungible Token - Burn Tests', () => {
       });
 
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateBurnConfigTx(
         user2,
         burnConfig,
@@ -685,7 +685,7 @@ describe('Fungible Token - Burn Tests', () => {
 
       const attemptFixedAmountValue = Bool(true);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateBurnConfigPropertyTx(
         user2,
@@ -733,7 +733,7 @@ describe('Fungible Token - Burn Tests', () => {
 
       const attemptRangedAmountValue = Bool(true);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateBurnConfigPropertyTx(
         user2,
@@ -782,7 +782,7 @@ describe('Fungible Token - Burn Tests', () => {
 
       const attemptUnauthorizedValue = Bool(false);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateBurnConfigPropertyTx(
         user2,
@@ -826,7 +826,7 @@ describe('Fungible Token - Burn Tests', () => {
       });
 
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateBurnParamsTx(
         user1,
         burnParams,
@@ -898,7 +898,7 @@ describe('Fungible Token - Burn Tests', () => {
 
       const newFixedAmountAttempt = UInt64.from(750);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateBurnParamsPropertyTx(
         user1,
@@ -951,7 +951,7 @@ describe('Fungible Token - Burn Tests', () => {
 
       const newMinAmountAttempt = UInt64.from(150);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateBurnParamsPropertyTx(
         user1,
@@ -1029,7 +1029,7 @@ describe('Fungible Token - Burn Tests', () => {
 
       const newMaxAmountAttempt = UInt64.from(1300);
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateBurnParamsPropertyTx(
         user1,
@@ -1138,7 +1138,7 @@ describe('Fungible Token - Burn Tests', () => {
         user1,
         UInt64.from(150),
         [user1.key],
-        'the required authorization was not provided or is invalid.'
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED
       );
     });
 
@@ -1159,7 +1159,7 @@ describe('Fungible Token - Burn Tests', () => {
       burnDynamicProofConfig.shouldVerify = Bool(true);
 
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateBurnDynamicProofConfigTx(
         user2,
         burnDynamicProofConfig,
@@ -1182,7 +1182,7 @@ describe('Fungible Token - Burn Tests', () => {
   describe('Side-loaded Verification Key Updates', () => {
     it('should reject updating sideloaded verification key hash: unauthorized by admin', async () => {
       const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateSLVkeyHashTx(
         user1,
         programVkey,

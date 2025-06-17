@@ -35,7 +35,7 @@ import {
 } from '../side-loaded/program.eg.js';
 import { TEST_ERROR_MESSAGES } from './constants.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('Fungible Token - Transfer Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -322,8 +322,7 @@ describe('Fungible Token - Transfer Tests', () => {
 
     it('should reject a transaction not signed by the token holder using sideload-disabled method', async () => {
       const transferAmount = UInt64.from(100);
-      const expectedErrorMessage =
-        'Check signature: Invalid signature on fee payer for key';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.INVALID_SIGNATURE_FEE_PAYER;
       await testTransferSideloadDisabledTx(
         user1,
         user3,
@@ -407,8 +406,7 @@ describe('Fungible Token - Transfer Tests', () => {
           .send()
           .wait();
       } catch (error: unknown) {
-        const expectedErrorMessage =
-          'the required authorization was not provided or is invalid';
+        const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
         expect((error as Error).message).toContain(expectedErrorMessage);
       }
     });
@@ -436,8 +434,7 @@ describe('Fungible Token - Transfer Tests', () => {
 
   describe('Side-loaded Verification Key Updates', () => {
     it('should reject updating sideloaded verification key hash: unauthorized by admin', async () => {
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateSLVkeyHashTx(
         user1,
         programVkey,

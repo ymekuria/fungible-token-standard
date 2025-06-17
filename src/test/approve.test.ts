@@ -41,7 +41,7 @@ import {
 } from '../side-loaded/program.eg.js';
 import { TEST_ERROR_MESSAGES } from './constants.js';
 
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('Fungible Token - ApproveBase Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -823,8 +823,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
         await updateUpdatesDynamicProofConfigTx.prove();
         await updateUpdatesDynamicProofConfigTx.sign([user2.key]).send().wait();
       } catch (error: unknown) {
-        const expectedErrorMessage =
-          'the required authorization was not provided or is invalid';
+        const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
         expect((error as Error).message).toContain(expectedErrorMessage);
       }
     });
@@ -852,8 +851,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
 
   describe('Side-loaded Verification Key Updates', () => {
     it('should reject updating sideloaded verification key hash: unauthorized by admin', async () => {
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateSLVkeyHashTx(
         user1,
         programVkey,

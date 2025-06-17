@@ -46,7 +46,7 @@ import {
 } from './constants.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = false;
+const proofsEnabled = true;
 
 describe('Fungible Token - Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
@@ -501,8 +501,7 @@ describe('Fungible Token - Mint Tests', () => {
     //! Throws an error because the first `initialize` has set the permissions to impossible
     //! not because of the `provedState` precondition
     it('should prevent calling `initialize()` a second time', async () => {
-      const expectedErrorMessage =
-        "Cannot update field 'permissions' because permission for this field is 'Impossible'";
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.CANNOT_UPDATE_PERMISSIONS_IMPOSSIBLE;
       await testInitializeTx([deployer.key, tokenA.key], expectedErrorMessage);
     });
 
@@ -639,7 +638,7 @@ describe('Fungible Token - Mint Tests', () => {
         user1,
         mintAmount,
         [user1.key], // Missing tokenAdmin.key
-        'the required authorization was not provided or is invalid.'
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED
       );
     });
 
@@ -650,7 +649,7 @@ describe('Fungible Token - Mint Tests', () => {
         user1,
         mintAmount,
         [user1.key], // Missing tokenAdmin.key
-        'the required authorization was not provided or is invalid.'
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED
       );
     });
   });
@@ -757,8 +756,7 @@ describe('Fungible Token - Mint Tests', () => {
       const originalUnauthorized = mintConfigBefore.unauthorized;
 
       const attemptFixedAmountValue = Bool(false);
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintConfigPropertyTx(
         user2,
@@ -805,8 +803,7 @@ describe('Fungible Token - Mint Tests', () => {
       const originalUnauthorized = mintConfigBefore.unauthorized;
 
       const attemptRangedAmountValue = Bool(true);
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintConfigPropertyTx(
         user2,
@@ -854,8 +851,7 @@ describe('Fungible Token - Mint Tests', () => {
       const originalUnauthorized = mintConfigBefore.unauthorized;
 
       const attemptUnauthorizedValue = Bool(true);
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintConfigPropertyTx(
         user2,
@@ -972,8 +968,7 @@ describe('Fungible Token - Mint Tests', () => {
       const maxAmountBeforeAttempt = paramsBeforeAttempt.maxAmount;
 
       const newFixedAmountAttempt = UInt64.from(750);
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1025,8 +1020,7 @@ describe('Fungible Token - Mint Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const newMinAmountAttempt = UInt64.from(150);
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1103,8 +1097,7 @@ describe('Fungible Token - Mint Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const newMaxAmountAttempt = UInt64.from(1300);
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1208,8 +1201,7 @@ describe('Fungible Token - Mint Tests', () => {
         await updateMintDynamicProofConfigTx.prove();
         await updateMintDynamicProofConfigTx.sign([user2.key]).send().wait();
       } catch (error: unknown) {
-        const expectedErrorMessage =
-          'the required authorization was not provided or is invalid';
+        const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
         expect((error as Error).message).toContain(expectedErrorMessage);
       }
     });
@@ -1237,8 +1229,7 @@ describe('Fungible Token - Mint Tests', () => {
 
   describe('Side-loaded Verification Key Updates', () => {
     it('should reject updating sideloaded verification key hash: unauthorized by admin', async () => {
-      const expectedErrorMessage =
-        'the required authorization was not provided or is invalid.';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1552,7 +1543,7 @@ describe('Fungible Token - Mint Tests', () => {
       transfersTx.sign([user1.key, user2.key]).send().wait();
 
       const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = 'Mismatch in MINA account nonce!';
+      const expectedErrorMessage = TEST_ERROR_MESSAGES.MINA_ACCOUNT_NONCE_MISMATCH;
       await testMintSLTx(
         user1,
         mintAmount,
