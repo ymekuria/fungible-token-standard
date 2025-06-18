@@ -145,7 +145,7 @@ const BIT_SIZES = {
       UPDATES: 3,
     },
   },
-};
+} as const;
 
 /**
  * `AmountConfig` defines shared constraints for fixed and ranged value settings
