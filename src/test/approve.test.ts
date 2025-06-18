@@ -392,7 +392,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
       updateReceive;
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -406,8 +406,10 @@ describe('Fungible Token - ApproveBase Tests', () => {
             );
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.flashMinting
       );
     });
@@ -426,7 +428,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount).mul(2);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(deployer, async () => {
+        const tx = await Mina.transaction(deployer, async () => {
           await tokenContract.approveAccountUpdatesCustomWithProof(
             [updateSend, updateReceive],
             dummyProof,
@@ -434,9 +436,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             vKeyMap
           );
         });
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.flashMinting
       );
     });
@@ -452,7 +456,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -467,9 +471,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             );
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.unbalancedTransaction
       );
     });
@@ -489,7 +495,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -503,9 +509,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             );
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.noTransferFromCirculation
       );
     });
@@ -525,7 +533,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -539,9 +547,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             );
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.noTransferFromCirculation
       );
     });
@@ -561,7 +571,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -573,9 +583,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             ]);
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.noTransferFromCirculation
       );
     });
@@ -594,7 +606,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
       updateReceive;
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -606,8 +618,10 @@ describe('Fungible Token - ApproveBase Tests', () => {
             ]);
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.flashMinting
       );
     });
@@ -626,15 +640,17 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount).mul(2);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(deployer, async () => {
+        const tx = await Mina.transaction(deployer, async () => {
           await tokenContract.approveAccountUpdatesCustom([
             updateSend,
             updateReceive,
           ]);
         });
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.flashMinting
       );
     });
@@ -650,7 +666,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -663,9 +679,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             ]);
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.unbalancedTransaction
       );
     });
@@ -685,7 +703,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -697,9 +715,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             ]);
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.noTransferFromCirculation
       );
     });
@@ -719,7 +739,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateReceive.balanceChange = Int64.fromUnsigned(sendAmount);
 
       const approveAccountUpdatesTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: deployer,
             fee,
@@ -731,9 +751,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             ]);
           }
         );
+        await tx.prove();
+        await tx.sign([deployer.key]).send().wait();
       };
 
-      expect(approveAccountUpdatesTx).rejects.toThrowError(
+      await expect(approveAccountUpdatesTx).rejects.toThrowError(
         FungibleTokenErrors.noTransferFromCirculation
       );
     });
@@ -753,7 +775,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateSend.account.permissions.set(permissions);
 
       const approveBaseTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: user2,
             fee,
@@ -767,9 +789,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             );
           }
         );
+        await tx.prove();
+        await tx.sign([user2.key]).send().wait();
       };
 
-      expect(approveBaseTx).rejects.toThrowError(
+      await expect(approveBaseTx).rejects.toThrowError(
         FungibleTokenErrors.noPermissionChangeAllowed
       );
     });
@@ -786,7 +810,7 @@ describe('Fungible Token - ApproveBase Tests', () => {
       updateSend.account.permissions.set(permissions);
 
       const approveBaseTx = async () => {
-        await Mina.transaction(
+        const tx = await Mina.transaction(
           {
             sender: user2,
             fee,
@@ -797,9 +821,11 @@ describe('Fungible Token - ApproveBase Tests', () => {
             );
           }
         );
+        await tx.prove();
+        await tx.sign([user2.key]).send().wait();
       };
 
-      expect(approveBaseTx).rejects.toThrowError(
+      await expect(approveBaseTx).rejects.toThrowError(
         FungibleTokenErrors.noPermissionChangeAllowed
       );
     });
