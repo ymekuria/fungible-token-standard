@@ -609,8 +609,10 @@ class DynamicProofConfig extends Struct({
    * @returns A DynamicProofConfig instance.
    */
   static unpack(packedConfigs: Field, configIndex: number) {
-    const start = configIndex * 7;
-    const bits = packedConfigs.toBits(28).slice(start, start + 7);
+    const start = configIndex * BIT_SIZES.DYNAMIC_PROOF_CONFIG.BITS_PER_CONFIG;
+    const bits = packedConfigs
+      .toBits(BIT_SIZES.DYNAMIC_PROOF_CONFIG.TOTAL_BITS)
+      .slice(start, start + BIT_SIZES.DYNAMIC_PROOF_CONFIG.BITS_PER_CONFIG);
 
     return new this({
       shouldVerify: bits[0],
