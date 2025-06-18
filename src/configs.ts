@@ -118,7 +118,7 @@ const FlagTypes = {
  */
 const MERKLE_HEIGHT = 3;
 
-const BitSizes = {
+const BIT_SIZES = {
   // Amount configs constants (MintConfig, BurnConfig)
   AMOUNT_CONFIG: {
     TOTAL_BITS: 6,
@@ -228,10 +228,10 @@ class MintConfig extends AmountConfig {
    */
   static unpack(packedConfigs: Field) {
     const serializedMintConfig = packedConfigs
-      .toBits(BitSizes.AMOUNT_CONFIG.TOTAL_BITS)
+      .toBits(BIT_SIZES.AMOUNT_CONFIG.TOTAL_BITS)
       .slice(
-        BitSizes.AMOUNT_CONFIG.MINT.START,
-        BitSizes.AMOUNT_CONFIG.MINT.END
+        BIT_SIZES.AMOUNT_CONFIG.MINT.START,
+        BIT_SIZES.AMOUNT_CONFIG.MINT.END
       );
     const [unauthorized, fixedAmount, rangedAmount] = serializedMintConfig;
 
@@ -253,15 +253,15 @@ class MintConfig extends AmountConfig {
    */
   updatePackedConfigs(packedConfigs: Field) {
     const serializedConfigs = packedConfigs.toBits(
-      BitSizes.AMOUNT_CONFIG.TOTAL_BITS
+      BIT_SIZES.AMOUNT_CONFIG.TOTAL_BITS
     );
     const serializedMintConfig = this.toBits();
 
     const updatedPackedConfigs = Field.fromBits([
       ...serializedMintConfig,
       ...serializedConfigs.slice(
-        BitSizes.AMOUNT_CONFIG.BURN.START,
-        BitSizes.AMOUNT_CONFIG.BURN.END
+        BIT_SIZES.AMOUNT_CONFIG.BURN.START,
+        BIT_SIZES.AMOUNT_CONFIG.BURN.END
       ),
     ]);
 
@@ -301,10 +301,10 @@ class BurnConfig extends AmountConfig {
    */
   static unpack(packedConfigs: Field) {
     const serializedBurnConfig = packedConfigs
-      .toBits(BitSizes.AMOUNT_CONFIG.TOTAL_BITS)
+      .toBits(BIT_SIZES.AMOUNT_CONFIG.TOTAL_BITS)
       .slice(
-        BitSizes.AMOUNT_CONFIG.BURN.START,
-        BitSizes.AMOUNT_CONFIG.BURN.END
+        BIT_SIZES.AMOUNT_CONFIG.BURN.START,
+        BIT_SIZES.AMOUNT_CONFIG.BURN.END
       );
     const [unauthorized, fixedAmount, rangedAmount] = serializedBurnConfig;
 
@@ -326,14 +326,14 @@ class BurnConfig extends AmountConfig {
    */
   updatePackedConfigs(packedConfigs: Field) {
     const serializedConfigs = packedConfigs.toBits(
-      BitSizes.AMOUNT_CONFIG.TOTAL_BITS
+      BIT_SIZES.AMOUNT_CONFIG.TOTAL_BITS
     );
     const serializedBurnConfig = this.toBits();
 
     const updatedPackedConfigs = Field.fromBits([
       ...serializedConfigs.slice(
-        BitSizes.AMOUNT_CONFIG.MINT.START,
-        BitSizes.AMOUNT_CONFIG.MINT.END
+        BIT_SIZES.AMOUNT_CONFIG.MINT.START,
+        BIT_SIZES.AMOUNT_CONFIG.MINT.END
       ),
       ...serializedBurnConfig,
     ]);
