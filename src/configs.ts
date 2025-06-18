@@ -632,12 +632,14 @@ class DynamicProofConfig extends Struct({
    * @returns Updated 24-bit packed Field.
    */
   updatePackedConfigs(packedConfigs: Field, configIndex: number): Field {
-    const bits = packedConfigs.toBits(28);
-    const start = configIndex * 7;
+    const bits = packedConfigs.toBits(
+      BIT_SIZES.DYNAMIC_PROOF_CONFIG.TOTAL_BITS
+    );
+    const start = configIndex * BIT_SIZES.DYNAMIC_PROOF_CONFIG.BITS_PER_CONFIG;
     const updatedBits = [
       ...bits.slice(0, start),
       ...this.toBits(),
-      ...bits.slice(start + 7),
+      ...bits.slice(start + BIT_SIZES.DYNAMIC_PROOF_CONFIG.BITS_PER_CONFIG),
     ];
 
     return Field.fromBits(updatedBits);
