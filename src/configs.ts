@@ -399,11 +399,26 @@ class AmountParams extends Struct({
    * @returns A new AmountParams instance with the unpacked fixed, minimum, and maximum amounts.
    */
   static unpack(packedParams: Field) {
-    const bits = packedParams.toBits(64 * 3);
+    const bits = packedParams.toBits(BIT_SIZES.AMOUNT_PARAMS.TOTAL_BITS);
     return new this({
-      fixedAmount: UInt64.fromBits(bits.slice(0, 64)),
-      minAmount: UInt64.fromBits(bits.slice(64, 64 * 2)),
-      maxAmount: UInt64.fromBits(bits.slice(64 * 2, 64 * 3)),
+      fixedAmount: UInt64.fromBits(
+        bits.slice(
+          BIT_SIZES.AMOUNT_PARAMS.FIXED_AMOUNT.START,
+          BIT_SIZES.AMOUNT_PARAMS.FIXED_AMOUNT.END
+        )
+      ),
+      minAmount: UInt64.fromBits(
+        bits.slice(
+          BIT_SIZES.AMOUNT_PARAMS.MIN_AMOUNT.START,
+          BIT_SIZES.AMOUNT_PARAMS.MIN_AMOUNT.END
+        )
+      ),
+      maxAmount: UInt64.fromBits(
+        bits.slice(
+          BIT_SIZES.AMOUNT_PARAMS.MAX_AMOUNT.START,
+          BIT_SIZES.AMOUNT_PARAMS.MAX_AMOUNT.END
+        )
+      ),
     });
   }
 
