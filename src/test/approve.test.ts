@@ -17,7 +17,7 @@ import {
   FungibleToken,
   FungibleTokenErrors,
   VKeyMerkleMap,
-} from '../FungibleTokenStandard.js';
+} from '../FungibleTokenContract.js';
 import {
   MintConfig,
   MintParams,
@@ -814,7 +814,8 @@ describe('New Token Standard ApproveBase Tests', () => {
         const updateUpdatesDynamicProofConfigTx = await Mina.transaction(
           { sender: user2, fee },
           async () => {
-            await tokenContract.updateUpdatesDynamicProofConfig(
+            await tokenContract.updateDynamicProofConfig(
+              OperationKeys.ApproveBase,
               updatesDynamicProofConfig
             );
           }
@@ -835,7 +836,8 @@ describe('New Token Standard ApproveBase Tests', () => {
       const updateUpdatesDynamicProofConfigTx = await Mina.transaction(
         { sender: user2, fee },
         async () => {
-          await tokenContract.updateUpdatesDynamicProofConfig(
+          await tokenContract.updateDynamicProofConfig(
+            OperationKeys.ApproveBase,
             updatesDynamicProofConfig
           );
         }

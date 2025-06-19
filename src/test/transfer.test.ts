@@ -13,7 +13,7 @@ import {
   FungibleToken,
   FungibleTokenErrors,
   VKeyMerkleMap,
-} from '../FungibleTokenStandard.js';
+} from '../FungibleTokenContract.js';
 import {
   MintConfig,
   MintParams,
@@ -395,7 +395,8 @@ describe('New Token Standard Transfer Tests', () => {
         const updateTransferDynamicProofConfigTx = await Mina.transaction(
           { sender: user2, fee },
           async () => {
-            await tokenContract.updateTransferDynamicProofConfig(
+            await tokenContract.updateDynamicProofConfig(
+              OperationKeys.Transfer,
               transferDynamicProofConfig
             );
           }
@@ -419,7 +420,8 @@ describe('New Token Standard Transfer Tests', () => {
       const updateTransferDynamicProofConfigTx = await Mina.transaction(
         { sender: user2, fee },
         async () => {
-          await tokenContract.updateTransferDynamicProofConfig(
+          await tokenContract.updateDynamicProofConfig(
+            OperationKeys.Transfer,
             transferDynamicProofConfig
           );
         }

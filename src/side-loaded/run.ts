@@ -9,7 +9,7 @@ import {
   UInt64,
   UInt8,
 } from 'o1js';
-import { FungibleToken, VKeyMerkleMap } from '../FungibleTokenStandard.js';
+import { FungibleToken, VKeyMerkleMap } from '../FungibleTokenContract.js';
 import {
   MintConfig,
   MintParams,
@@ -169,7 +169,10 @@ mintDynamicProofConfig.shouldVerify = Bool(true);
 const updateMintDynamicProofConfigTx = await Mina.transaction(
   { sender: alexa, fee },
   async () => {
-    await token.updateMintDynamicProofConfig(mintDynamicProofConfig);
+    await token.updateDynamicProofConfig(
+      OperationKeys.Mint,
+      mintDynamicProofConfig
+    );
   }
 );
 await updateMintDynamicProofConfigTx.prove();
@@ -252,7 +255,10 @@ const updateDynamicProofConfigTx = await Mina.transaction(
     fee,
   },
   async () => {
-    await token.updateMintDynamicProofConfig(flexibleDynamicProofConfig);
+    await token.updateDynamicProofConfig(
+      OperationKeys.Mint,
+      flexibleDynamicProofConfig
+    );
   }
 );
 await updateDynamicProofConfigTx.prove();
