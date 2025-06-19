@@ -16,6 +16,7 @@ export {
   ParameterTypes,
   FlagTypes,
   MERKLE_HEIGHT,
+  MINA_TOKEN_ID,
 };
 
 /**
@@ -111,6 +112,9 @@ const FlagTypes = {
   RangedAmount: Field(2),
   Unauthorized: Field(3),
 };
+
+// The native MINA token ID is always 1
+const MINA_TOKEN_ID = Field(1);
 
 /**
  * Height of the Merkle tree used for verification key storage.

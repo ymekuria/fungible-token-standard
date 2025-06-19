@@ -36,6 +36,7 @@ import {
   ParameterTypes,
   FlagTypes,
   MERKLE_HEIGHT,
+  MINA_TOKEN_ID,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
@@ -128,8 +129,6 @@ const FungibleTokenErrors = {
   useCustomTransferMethod:
     'Method overridden: Use transferCustom() for side-loaded proof support instead of transfer()',
 };
-
-const MINA_TOKEN_ID = Field(1); // The native MINA token ID is always 1
 
 class FungibleToken extends TokenContract {
   @state(UInt8) decimals = State<UInt8>();
