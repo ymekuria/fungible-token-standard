@@ -114,7 +114,7 @@ const FlagTypes = {
 };
 
 // The native MINA token ID is always 1
-const MINA_TOKEN_ID = Field(1);
+const MINA_TOKEN_ID = 1 as const;
 
 /**
  * Height of the Merkle tree used for verification key storage.
