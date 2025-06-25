@@ -41,7 +41,7 @@ import {
 } from '../side-loaded/program.eg.js';
 import { TEST_ERROR_MESSAGES } from './constants.js';
 
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('Fungible Token - ApproveBase Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;

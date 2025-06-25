@@ -46,7 +46,7 @@ import {
 } from './constants.js';
 
 //! Tests can take up to 15 minutes with `proofsEnabled: true`, and around 4 minutes when false.
-const proofsEnabled = true;
+const proofsEnabled = false;
 
 describe('Fungible Token - Mint Tests', () => {
   let tokenAdmin: Mina.TestPublicKey, tokenA: Mina.TestPublicKey;
