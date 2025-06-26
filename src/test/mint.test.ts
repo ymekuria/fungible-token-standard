@@ -412,7 +412,7 @@ describe('New Token Standard Mint Tests', () => {
 
         await tokenContract.deploy({
           symbol: 'tokA',
-          src: 'https://github.com/o1-labs-XT/fungible-token-standard',
+          src: 'https://github.com/o1-labs-XT/fungible-token-contract',
         });
       });
 
