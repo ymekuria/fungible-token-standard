@@ -24,6 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          registry-url: 'https://registry.npmjs.org'
       - name: Git checkout
         uses: actions/checkout@v4
       - name: NPM ci & build
