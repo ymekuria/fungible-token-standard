@@ -1,5 +1,5 @@
 #
-# This workflow will run unit tests and attempt to publish package to NPM.
+# This workflow will publish the package to NPM when changes are pushed to main and the version is updated.
 #
 
 name: Publish to NPM
