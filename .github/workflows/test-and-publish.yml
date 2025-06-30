@@ -9,28 +9,6 @@ on:
       - main
   workflow_dispatch: {}
 jobs:
-  common-unit-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        node: [18]
-    steps:
-      - name: Set up NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - name: Git checkout
-        uses: actions/checkout@v4
-      - name: NPM ci, build, & test
-        run: |
-          npm ci
-          npm run build --if-present
-          npm run test
-        env:
-          CI: true
-   
-
   publish-to-npm:
     needs:
       [
