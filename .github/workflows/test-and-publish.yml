@@ -2,7 +2,7 @@
 # This workflow will run unit tests and attempt to publish package to NPM.
 #
 
-name: Test and publish to NPM
+name: Publish to NPM
 on:
   push: {}
   pull_request: {}
