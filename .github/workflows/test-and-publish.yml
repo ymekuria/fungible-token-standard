@@ -4,17 +4,17 @@
 
 name: Publish to NPM
 on:
-  push:
+  workflow_run:
+    workflows: ["zkApp tests"]
+    types:
+      - completed
     branches:
       - main
   workflow_dispatch: {}
 jobs:
   publish-to-npm:
-    needs:
-      [
-       common-unit-tests,
-      ]
-    if: github.ref == 'refs/heads/main'
+ # Only run if the tests workflow succeeded or this was manually triggered
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
