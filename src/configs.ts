@@ -718,7 +718,7 @@ class MintDynamicProofConfig extends DynamicProofConfig {
 }
 
 /**
- * `BrunDynamicProofConfig` specializes `DynamicProofConfig` specifically for burn operations.
+ * `BurnDynamicProofConfig` specializes `DynamicProofConfig` specifically for burn operations.
  *
  * Uses the second 6-bit segment (bits 6–11) of the packed 24-bit field.
  *
