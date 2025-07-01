@@ -108,7 +108,7 @@ node build/src/examples/e2e.eg.js
 node build/src/examples/escrow.eg.js
 
 # Run the concurrent transfer example
-node build/src/examples/concurrent-transfer.eg.js
+node build/src/examples/e2e.eg.js
 ```
 
 ## Technical Limitations & Best Practices
