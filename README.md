@@ -107,8 +107,8 @@ node build/src/examples/e2e.eg.js
 # Run the escrow example
 node build/src/examples/escrow.eg.js
 
-# Run the concurrent transfer example
-node build/src/examples/e2e.eg.js
+# Run the token manager example
+node build/src/examples/token-manager.eg.js
 ```
 
 ## Technical Limitations & Best Practices
