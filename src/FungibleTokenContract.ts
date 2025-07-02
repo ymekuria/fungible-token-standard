@@ -40,9 +40,9 @@ import {
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
-const { IndexedMerkleMap } = Experimental;
-
-class VKeyMerkleMap extends IndexedMerkleMap(MERKLE_HEIGHT) {}
+// =============================================================================
+// EXPORTS
+// =============================================================================
 
 export {
   FungibleTokenErrors,
@@ -62,6 +62,21 @@ export {
   ConfigFlagUpdateEvent,
 };
 
+// =============================================================================
+// TYPES & INTERFACES
+// =============================================================================
+
+const { IndexedMerkleMap } = Experimental;
+
+/**
+ * Merkle map for storing side-loaded verification key hashes.
+ * Maps operation keys to their corresponding verification key hashes.
+ */
+class VKeyMerkleMap extends IndexedMerkleMap(MERKLE_HEIGHT) {}
+
+/**
+ * Deployment properties for the fungible token contract.
+ */
 interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   /** The token symbol. */
   symbol: string;
@@ -70,6 +85,11 @@ interface FungibleTokenDeployProps extends Exclude<DeployArgs, undefined> {
   src: string;
 }
 
+// =============================================================================
+// ERROR CONSTANTS
+// =============================================================================
+
+// Comprehensive error messages for all fungible token operations.
 const FungibleTokenErrors = {
   // Admin & Authorization
   noPermissionToChangeAdmin:
@@ -130,15 +150,129 @@ const FungibleTokenErrors = {
     'Method overridden: Use transferCustom() for side-loaded proof support instead of transfer()',
 };
 
+// =============================================================================
+// EVENT CLASSES
+// =============================================================================
+
+/**
+ * Event emitted when the admin is changed.
+ */
+class SetAdminEvent extends Struct({
+  previousAdmin: PublicKey,
+  newAdmin: PublicKey,
+}) {}
+
+/**
+ * Event emitted when tokens are minted.
+ */
+class MintEvent extends Struct({
+  recipient: PublicKey,
+  amount: UInt64,
+}) {}
+
+/**
+ * Event emitted when tokens are burned.
+ */
+class BurnEvent extends Struct({
+  from: PublicKey,
+  amount: UInt64,
+}) {}
+
+/**
+ * Event emitted when a balance change occurs.
+ */
+class BalanceChangeEvent extends Struct({
+  address: PublicKey,
+  amount: Int64,
+}) {}
+
+/**
+ * Event emitted when a side-loaded verification key is updated.
+ */
+class SideLoadedVKeyUpdateEvent extends Struct({
+  operationKey: Field,
+  newVKeyHash: Field,
+  newMerkleRoot: Field,
+}) {}
+
+/**
+ * Event emitted when tokens are transferred.
+ */
+class TransferEvent extends Struct({
+  from: PublicKey,
+  to: PublicKey,
+  amount: UInt64,
+}) {}
+
+/**
+ * Event emitted when the contract is initialized.
+ */
+class InitializationEvent extends Struct({
+  admin: PublicKey,
+  decimals: UInt8,
+}) {}
+
+/**
+ * Event emitted when the verification key is updated.
+ */
+class VerificationKeyUpdateEvent extends Struct({
+  vKeyHash: Field,
+}) {}
+
+/**
+ * Event emitted when configuration structure is updated.
+ */
+class ConfigStructureUpdateEvent extends Struct({
+  updateType: Field, // EventTypes.Config or EventTypes.Params
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+}) {}
+
+/**
+ * Event emitted when amount parameters are updated.
+ */
+class AmountValueUpdateEvent extends Struct({
+  parameterType: Field, // ParameterTypes.FixedAmount, MinAmount, or MaxAmount
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+  oldValue: UInt64,
+  newValue: UInt64,
+}) {}
+
+/**
+ * Event emitted when dynamic proof configuration is updated.
+ */
+class DynamicProofConfigUpdateEvent extends Struct({
+  operationType: Field, // OperationKeys.Mint, Burn, Transfer, or ApproveBase
+  newConfig: Field, // The updated packed configuration
+}) {}
+
+/**
+ * Event emitted when configuration flags are updated.
+ */
+class ConfigFlagUpdateEvent extends Struct({
+  flagType: Field, // FlagTypes.FixedAmount, RangedAmount, or Unauthorized
+  category: Field, // OperationKeys.Mint or OperationKeys.Burn
+  oldValue: Bool,
+  newValue: Bool,
+}) {}
+
+// =============================================================================
+// MAIN CONTRACT CLASS
+// =============================================================================
+
 class FungibleToken extends TokenContract {
+  // =============================================================================
+  // STATE & EVENTS
+  // =============================================================================
+
   @state(UInt8) decimals = State<UInt8>();
   @state(PublicKey) admin = State<PublicKey>();
   @state(Field) packedAmountConfigs = State<Field>();
   @state(Field) packedMintParams = State<Field>();
   @state(Field) packedBurnParams = State<Field>();
   @state(Field) packedDynamicProofConfigs = State<Field>();
-  @state(Field) vKeyMapRoot = State<Field>(); // the side-loaded verification key hash.
+  @state(Field) vKeyMapRoot = State<Field>(); // The side-loaded verification key hash.
 
+  /** Event definitions for the contract */
   readonly events = {
     SetAdmin: SetAdminEvent,
     Mint: MintEvent,
@@ -154,14 +288,15 @@ class FungibleToken extends TokenContract {
     DynamicProofConfigUpdate: DynamicProofConfigUpdateEvent,
   };
 
-  private async ensureAdminSignature(condition: Bool) {
-    const admin = this.admin.getAndRequireEquals();
-    const accountUpdate = AccountUpdate.createIf(condition, admin);
-    accountUpdate.requireSignature();
+  // =============================================================================
+  // INITIALIZATION & DEPLOYMENT
+  // =============================================================================
 
-    return accountUpdate;
-  }
-
+  /**
+   * Deploys the fungible token contract with specified properties.
+   *
+   * @param props - Deployment properties including symbol and source reference
+   */
   async deploy(props: FungibleTokenDeployProps) {
     await super.deploy(props);
     this.account.zkappUri.set(props.src);
@@ -176,9 +311,20 @@ class FungibleToken extends TokenContract {
     });
   }
 
-  /** Initializes the account for tracking total circulation.
-   * @argument {PublicKey} admin - public key where the admin contract is deployed
-   * @argument {UInt8} decimals - number of decimals for the token
+  /**
+   * Initializes the token contract with configuration parameters.
+   * This method can only be called once when the contract is first deployed.
+   *
+   * @param admin - Public key of the contract administrator
+   * @param decimals - Number of decimal places for the token
+   * @param mintConfig - Configuration for minting operations
+   * @param mintParams - Parameters for minting operations
+   * @param burnConfig - Configuration for burning operations
+   * @param burnParams - Parameters for burning operations
+   * @param mintDynamicProofConfig - Dynamic proof configuration for minting
+   * @param burnDynamicProofConfig - Dynamic proof configuration for burning
+   * @param transferDynamicProofConfig - Dynamic proof configuration for transfers
+   * @param updatesDynamicProofConfig - Dynamic proof configuration for updates
    */
   @method
   async initialize(
@@ -239,8 +385,30 @@ class FungibleToken extends TokenContract {
     );
   }
 
-  /** Update the verification key.
-   * This will only work after a hardfork that increments the transaction version, the permission will be treated as `signature`.
+  // =============================================================================
+  // ADMIN OPERATIONS
+  // =============================================================================
+
+  /**
+   * Ensures admin signature is required when condition is true.
+   *
+   * @param condition - Whether to require admin signature
+   * @returns AccountUpdate for the admin signature
+   */
+  private async ensureAdminSignature(condition: Bool) {
+    const admin = this.admin.getAndRequireEquals();
+    const accountUpdate = AccountUpdate.createIf(condition, admin);
+    accountUpdate.requireSignature();
+
+    return accountUpdate;
+  }
+
+  /**
+   * Updates the contract's verification key.
+   * This will only work after a hardfork that increments the transaction version,
+   * the permission will be treated as `signature`.
+   *
+   * @param vk - The new verification key to set
    */
   @method
   async updateVerificationKey(vk: VerificationKey) {
@@ -313,6 +481,12 @@ class FungibleToken extends TokenContract {
     );
   }
 
+  /**
+   * Sets a new administrator for the contract.
+   * Requires signature from the current admin.
+   *
+   * @param admin - Public key of the new administrator
+   */
   @method
   async setAdmin(admin: PublicKey) {
     const previousAdmin = this.admin.getAndRequireEquals();
@@ -329,12 +503,26 @@ class FungibleToken extends TokenContract {
     );
   }
 
+  // =============================================================================
+  // TOKEN OPERATIONS - MINTING
+  // =============================================================================
+
+  /**
+   * Mints tokens to a recipient using a side-loaded proof for validation.
+   *
+   * @param recipient - Public key of the token recipient
+   * @param amount - Amount of tokens to mint
+   * @param proof - Side-loaded proof for validation
+   * @param vk - Verification key for the side-loaded proof
+   * @param vKeyMap - Merkle map of verification keys
+   * @returns AccountUpdate for the minting operation
+   */
   @method.returns(AccountUpdate)
   async mintWithProof(
     recipient: PublicKey,
     amount: UInt64,
     proof: SideloadedProof,
-    vk: VerificationKey, // provide the full verification key since only the hash is stored.
+    vk: VerificationKey, // Provide the full verification key since only the hash is stored.
     vKeyMap: VKeyMerkleMap
   ): Promise<AccountUpdate> {
     const packedDynamicProofConfigs =
@@ -415,6 +603,20 @@ class FungibleToken extends TokenContract {
     return accountUpdate;
   }
 
+  // =============================================================================
+  // TOKEN OPERATIONS - BURNING
+  // =============================================================================
+
+  /**
+   * Burns tokens from an account using a side-loaded proof for validation.
+   *
+   * @param from - Public key of the account to burn tokens from
+   * @param amount - Amount of tokens to burn
+   * @param proof - Side-loaded proof for validation
+   * @param vk - Verification key for the side-loaded proof
+   * @param vKeyMap - Merkle map of verification keys
+   * @returns AccountUpdate for the burning operation
+   */
   @method.returns(AccountUpdate)
   async burnWithProof(
     from: PublicKey,
@@ -493,6 +695,14 @@ class FungibleToken extends TokenContract {
     return accountUpdate;
   }
 
+  // =============================================================================
+  // TOKEN OPERATIONS - TRANSFERS
+  // =============================================================================
+
+  /**
+   * Standard transfer method - intentionally throws an error to guide users
+   * to use transferCustom() or transferCustomWithProof() instead.
+   */
   override async transfer(from: PublicKey, to: PublicKey, amount: UInt64) {
     throw Error(FungibleTokenErrors.useCustomTransferMethod);
   }
@@ -587,16 +797,32 @@ class FungibleToken extends TokenContract {
     );
   }
 
+  // =============================================================================
+  // APPROVAL METHODS
+  // =============================================================================
+
+  /**
+   * Standard approveBase method - intentionally throws an error to guide users
+   * to use approveBaseCustom() or approveBaseCustomWithProof() instead.
+   */
   async approveBase(forest: AccountUpdateForest): Promise<void> {
     throw new Error(FungibleTokenErrors.useCustomApproveMethod);
   }
 
+  /**
+   * Standard approveAccountUpdate method - intentionally throws an error to guide users
+   * to use approveAccountUpdateCustom() or approveAccountUpdateCustomWithProof() instead.
+   */
   override async approveAccountUpdate(
     accountUpdate: AccountUpdate | AccountUpdateTree
   ) {
     throw new Error(FungibleTokenErrors.useCustomApproveAccountUpdate);
   }
 
+  /**
+   * Standard approveAccountUpdates method - intentionally throws an error to guide users
+   * to use approveAccountUpdatesCustom() or approveAccountUpdatesCustomWithProof() instead.
+   */
   override async approveAccountUpdates(
     accountUpdates: (AccountUpdate | AccountUpdateTree)[]
   ) {
@@ -1333,69 +1559,9 @@ class FungibleToken extends TokenContract {
   }
 }
 
-class SetAdminEvent extends Struct({
-  previousAdmin: PublicKey,
-  newAdmin: PublicKey,
-}) {}
-class MintEvent extends Struct({
-  recipient: PublicKey,
-  amount: UInt64,
-}) {}
-
-class BurnEvent extends Struct({
-  from: PublicKey,
-  amount: UInt64,
-}) {}
-
-class BalanceChangeEvent extends Struct({
-  address: PublicKey,
-  amount: Int64,
-}) {}
-
-class SideLoadedVKeyUpdateEvent extends Struct({
-  operationKey: Field,
-  newVKeyHash: Field,
-  newMerkleRoot: Field,
-}) {}
-
-class TransferEvent extends Struct({
-  from: PublicKey,
-  to: PublicKey,
-  amount: UInt64,
-}) {}
-
-class InitializationEvent extends Struct({
-  admin: PublicKey,
-  decimals: UInt8,
-}) {}
-
-class VerificationKeyUpdateEvent extends Struct({
-  vKeyHash: Field,
-}) {}
-
-class ConfigStructureUpdateEvent extends Struct({
-  updateType: Field, // EventTypes.Config or EventTypes.Params
-  category: Field, // OperationKeys.Mint or OperationKeys.Burn
-}) {}
-
-class AmountValueUpdateEvent extends Struct({
-  parameterType: Field, // ParameterTypes.FixedAmount, MinAmount, or MaxAmount
-  category: Field, // OperationKeys.Mint or OperationKeys.Burn
-  oldValue: UInt64,
-  newValue: UInt64,
-}) {}
-
-class DynamicProofConfigUpdateEvent extends Struct({
-  operationType: Field, // OperationKeys.Mint, Burn, Transfer, or ApproveBase
-  newConfig: Field, // The updated packed configuration
-}) {}
-
-class ConfigFlagUpdateEvent extends Struct({
-  flagType: Field, // FlagTypes.FixedAmount, RangedAmount, or Unauthorized
-  category: Field, // OperationKeys.Mint or OperationKeys.Burn
-  oldValue: Bool,
-  newValue: Bool,
-}) {}
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
 
 // copied from: https://github.com/o1-labs/o1js/blob/6ebbc23710f6de023fea6d83dc93c5a914c571f2/src/lib/mina/token/token-contract.ts#L189
 function toForest(
