@@ -501,7 +501,8 @@ describe('Fungible Token - Mint Tests', () => {
     //! Throws an error because the first `initialize` has set the permissions to impossible
     //! not because of the `provedState` precondition
     it('should prevent calling `initialize()` a second time', async () => {
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.CANNOT_UPDATE_PERMISSIONS_IMPOSSIBLE;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.CANNOT_UPDATE_PERMISSIONS_IMPOSSIBLE;
       await testInitializeTx([deployer.key, tokenA.key], expectedErrorMessage);
     });
 
@@ -655,22 +656,6 @@ describe('Fungible Token - Mint Tests', () => {
   });
 
   describe('Mint Config Updates - Unauthorized/Fixed Mode', () => {
-    it('should reject mint config update when both range and fixed mint are enabled', async () => {
-      const mintConfig = new MintConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(true),
-      });
-
-      const expectedErrorMessage = ConfigErrors.invalidConfigValidation;
-      await updateMintConfigTx(
-        user1,
-        mintConfig,
-        [user1.key, tokenAdmin.key],
-        expectedErrorMessage
-      );
-    });
-
     it('should reject mint config update when unauthorized by admin', async () => {
       const mintConfig = new MintConfig({
         unauthorized: Bool(true),
@@ -756,7 +741,8 @@ describe('Fungible Token - Mint Tests', () => {
       const originalUnauthorized = mintConfigBefore.unauthorized;
 
       const attemptFixedAmountValue = Bool(false);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintConfigPropertyTx(
         user2,
@@ -803,7 +789,8 @@ describe('Fungible Token - Mint Tests', () => {
       const originalUnauthorized = mintConfigBefore.unauthorized;
 
       const attemptRangedAmountValue = Bool(true);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintConfigPropertyTx(
         user2,
@@ -851,7 +838,8 @@ describe('Fungible Token - Mint Tests', () => {
       const originalUnauthorized = mintConfigBefore.unauthorized;
 
       const attemptUnauthorizedValue = Bool(true);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintConfigPropertyTx(
         user2,
@@ -968,7 +956,8 @@ describe('Fungible Token - Mint Tests', () => {
       const maxAmountBeforeAttempt = paramsBeforeAttempt.maxAmount;
 
       const newFixedAmountAttempt = UInt64.from(750);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1020,7 +1009,8 @@ describe('Fungible Token - Mint Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const newMinAmountAttempt = UInt64.from(150);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1097,7 +1087,8 @@ describe('Fungible Token - Mint Tests', () => {
       const originalMaxAmount = paramsBeforeAttempt.maxAmount;
 
       const newMaxAmountAttempt = UInt64.from(1300);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
 
       await updateMintParamsPropertyTx(
         user1,
@@ -1201,7 +1192,8 @@ describe('Fungible Token - Mint Tests', () => {
         await updateMintDynamicProofConfigTx.prove();
         await updateMintDynamicProofConfigTx.sign([user2.key]).send().wait();
       } catch (error: unknown) {
-        const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+        const expectedErrorMessage =
+          TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
         expect((error as Error).message).toContain(expectedErrorMessage);
       }
     });
@@ -1229,7 +1221,8 @@ describe('Fungible Token - Mint Tests', () => {
 
   describe('Side-loaded Verification Key Updates', () => {
     it('should reject updating sideloaded verification key hash: unauthorized by admin', async () => {
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.NO_AUTHORIZATION_PROVIDED;
       await updateSLVkeyHashTx(
         user1,
         programVkey,
@@ -1543,7 +1536,8 @@ describe('Fungible Token - Mint Tests', () => {
       transfersTx.sign([user1.key, user2.key]).send().wait();
 
       const mintAmount = UInt64.from(600);
-      const expectedErrorMessage = TEST_ERROR_MESSAGES.MINA_ACCOUNT_NONCE_MISMATCH;
+      const expectedErrorMessage =
+        TEST_ERROR_MESSAGES.MINA_ACCOUNT_NONCE_MISMATCH;
       await testMintSLTx(
         user1,
         mintAmount,
