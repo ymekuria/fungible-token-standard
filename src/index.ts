@@ -11,16 +11,26 @@ export {
   OperationKeys,
 } from './configs.js';
 
-export { 
-    FungibleTokenErrors,
-    FungibleToken,
-    SetAdminEvent,
-    MintEvent,
-    BurnEvent,
-    BalanceChangeEvent,
-    SideLoadedVKeyUpdateEvent,
-    VKeyMerkleMap,
+export {
+  FungibleTokenErrors,
+  FungibleToken,
+  VKeyMerkleMap,
 } from './FungibleTokenContract.js';
+
+export {
+  SetAdminEvent,
+  MintEvent,
+  BurnEvent,
+  TransferEvent,
+  BalanceChangeEvent,
+  InitializationEvent,
+  VerificationKeyUpdateEvent,
+  SideLoadedVKeyUpdateEvent,
+  ConfigStructureUpdateEvent,
+  AmountValueUpdateEvent,
+  DynamicProofConfigUpdateEvent,
+  ConfigFlagUpdateEvent,
+} from './events.js';
 
 export {
   generateDummyDynamicProof,
