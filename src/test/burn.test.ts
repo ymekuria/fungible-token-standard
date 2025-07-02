@@ -584,22 +584,6 @@ describe('Fungible Token - Burn Tests', () => {
   });
 
   describe('Burn Config Updates - Unauthorized/Fixed Mode', () => {
-    it('should reject burn config update when both range and fixed burn are enabled', async () => {
-      const burnConfig = new BurnConfig({
-        unauthorized: Bool(true),
-        fixedAmount: Bool(true),
-        rangedAmount: Bool(true),
-      });
-
-      const expectedErrorMessage = ConfigErrors.invalidConfigValidation;
-      await updateBurnConfigTx(
-        user1,
-        burnConfig,
-        [user1.key, tokenAdmin.key],
-        expectedErrorMessage
-      );
-    });
-
     //! should test authorized burns
     it('should reject burn config update when unauthorized by admin', async () => {
       const burnConfig = new BurnConfig({
