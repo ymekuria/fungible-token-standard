@@ -41,6 +41,28 @@ import {
 import { SideloadedProof } from './side-loaded/program.eg.js';
 
 // =============================================================================
+// EXPORTS
+// =============================================================================
+
+export {
+  FungibleTokenErrors,
+  FungibleToken,
+  SetAdminEvent,
+  MintEvent,
+  BurnEvent,
+  TransferEvent,
+  BalanceChangeEvent,
+  VKeyMerkleMap,
+  SideLoadedVKeyUpdateEvent,
+  InitializationEvent,
+  VerificationKeyUpdateEvent,
+  ConfigStructureUpdateEvent,
+  AmountValueUpdateEvent,
+  DynamicProofConfigUpdateEvent,
+  ConfigFlagUpdateEvent,
+};
+
+// =============================================================================
 // TYPES & INTERFACES
 // =============================================================================
 
@@ -1550,25 +1572,3 @@ function toForest(
   );
   return AccountUpdateForest.fromReverse(trees);
 }
-
-// =============================================================================
-// EXPORTS
-// =============================================================================
-
-export {
-  FungibleTokenErrors,
-  FungibleToken,
-  SetAdminEvent,
-  MintEvent,
-  BurnEvent,
-  TransferEvent,
-  BalanceChangeEvent,
-  VKeyMerkleMap,
-  SideLoadedVKeyUpdateEvent,
-  InitializationEvent,
-  VerificationKeyUpdateEvent,
-  ConfigStructureUpdateEvent,
-  AmountValueUpdateEvent,
-  DynamicProofConfigUpdateEvent,
-  ConfigFlagUpdateEvent,
-};
