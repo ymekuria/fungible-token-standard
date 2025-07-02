@@ -39,6 +39,20 @@ import {
   MINA_TOKEN_ID,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
+import {
+  SetAdminEvent,
+  MintEvent,
+  BurnEvent,
+  TransferEvent,
+  BalanceChangeEvent,
+  InitializationEvent,
+  VerificationKeyUpdateEvent,
+  SideLoadedVKeyUpdateEvent,
+  ConfigStructureUpdateEvent,
+  AmountValueUpdateEvent,
+  DynamicProofConfigUpdateEvent,
+  ConfigFlagUpdateEvent,
+} from './events.js';
 
 // =============================================================================
 // EXPORTS
@@ -47,15 +61,16 @@ import { SideloadedProof } from './side-loaded/program.eg.js';
 export {
   FungibleTokenErrors,
   FungibleToken,
+  VKeyMerkleMap,
+  // Re-export all events from events.js
   SetAdminEvent,
   MintEvent,
   BurnEvent,
   TransferEvent,
   BalanceChangeEvent,
-  VKeyMerkleMap,
-  SideLoadedVKeyUpdateEvent,
   InitializationEvent,
   VerificationKeyUpdateEvent,
+  SideLoadedVKeyUpdateEvent,
   ConfigStructureUpdateEvent,
   AmountValueUpdateEvent,
   DynamicProofConfigUpdateEvent,
@@ -149,111 +164,6 @@ const FungibleTokenErrors = {
   useCustomTransferMethod:
     'Method overridden: Use transferCustom() for side-loaded proof support instead of transfer()',
 };
-
-// =============================================================================
-// EVENT CLASSES
-// =============================================================================
-
-/**
- * Event emitted when the admin is changed.
- */
-class SetAdminEvent extends Struct({
-  previousAdmin: PublicKey,
-  newAdmin: PublicKey,
-}) {}
-
-/**
- * Event emitted when tokens are minted.
- */
-class MintEvent extends Struct({
-  recipient: PublicKey,
-  amount: UInt64,
-}) {}
-
-/**
- * Event emitted when tokens are burned.
- */
-class BurnEvent extends Struct({
-  from: PublicKey,
-  amount: UInt64,
-}) {}
-
-/**
- * Event emitted when a balance change occurs.
- */
-class BalanceChangeEvent extends Struct({
-  address: PublicKey,
-  amount: Int64,
-}) {}
-
-/**
- * Event emitted when a side-loaded verification key is updated.
- */
-class SideLoadedVKeyUpdateEvent extends Struct({
-  operationKey: Field,
-  newVKeyHash: Field,
-  newMerkleRoot: Field,
-}) {}
-
-/**
- * Event emitted when tokens are transferred.
- */
-class TransferEvent extends Struct({
-  from: PublicKey,
-  to: PublicKey,
-  amount: UInt64,
-}) {}
-
-/**
- * Event emitted when the contract is initialized.
- */
-class InitializationEvent extends Struct({
-  admin: PublicKey,
-  decimals: UInt8,
-}) {}
-
-/**
- * Event emitted when the verification key is updated.
- */
-class VerificationKeyUpdateEvent extends Struct({
-  vKeyHash: Field,
-}) {}
-
-/**
- * Event emitted when configuration structure is updated.
- */
-class ConfigStructureUpdateEvent extends Struct({
-  updateType: Field, // EventTypes.Config or EventTypes.Params
-  category: Field, // OperationKeys.Mint or OperationKeys.Burn
-}) {}
-
-/**
- * Event emitted when amount parameters are updated.
- */
-class AmountValueUpdateEvent extends Struct({
-  parameterType: Field, // ParameterTypes.FixedAmount, MinAmount, or MaxAmount
-  category: Field, // OperationKeys.Mint or OperationKeys.Burn
-  oldValue: UInt64,
-  newValue: UInt64,
-}) {}
-
-/**
- * Event emitted when dynamic proof configuration is updated.
- */
-class DynamicProofConfigUpdateEvent extends Struct({
-  operationType: Field, // OperationKeys.Mint, Burn, Transfer, or ApproveBase
-  newConfig: Field, // The updated packed configuration
-}) {}
-
-/**
- * Event emitted when configuration flags are updated.
- */
-class ConfigFlagUpdateEvent extends Struct({
-  flagType: Field, // FlagTypes.FixedAmount, RangedAmount, or Unauthorized
-  category: Field, // OperationKeys.Mint or OperationKeys.Burn
-  oldValue: Bool,
-  newValue: Bool,
-}) {}
 
 // =============================================================================
 // MAIN CONTRACT CLASS
