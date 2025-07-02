@@ -39,7 +39,7 @@ import {
   MINA_TOKEN_ID,
 } from './configs.js';
 import { SideloadedProof } from './side-loaded/program.eg.js';
-import { FungibleTokenErrors } from './errors.js';
+import { FungibleTokenErrors } from './lib/errors.js';
 import {
   SetAdminEvent,
   MintEvent,
@@ -53,7 +53,7 @@ import {
   AmountValueUpdateEvent,
   DynamicProofConfigUpdateEvent,
   ConfigFlagUpdateEvent,
-} from './events.js';
+} from './lib/events.js';
 
 // =============================================================================
 // EXPORTS
