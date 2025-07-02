@@ -15,9 +15,6 @@ export {
   FungibleTokenErrors,
   FungibleToken,
   VKeyMerkleMap,
-} from './FungibleTokenContract.js';
-
-export {
   SetAdminEvent,
   MintEvent,
   BurnEvent,
@@ -30,7 +27,7 @@ export {
   AmountValueUpdateEvent,
   DynamicProofConfigUpdateEvent,
   ConfigFlagUpdateEvent,
-} from './events.js';
+} from './FungibleTokenContract.js';
 
 export {
   generateDummyDynamicProof,
