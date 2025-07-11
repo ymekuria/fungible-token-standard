@@ -40,5 +40,6 @@ jobs:
           token: ${{ secrets.NPM_TOKEN }}
           strategy: upgrade
           provenance: true
+          access: public 
         env:
           INPUT_TOKEN: ${{ secrets.NPM_TOKEN }}
