@@ -1,13 +1,15 @@
 {
-  "name": "ftc-test",
+  "name": "ftctest",
   "version": "0.0.0",
   "description": "",
-  "author": "",
   "license": "Apache-2.0",
+  
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ymekuria/fungible-token-standard"
+  },
+  "author": "",
   "keywords": [
-    "mina-zkapp",
-    "mina-zk-app",
-    "mina-dapp",
     "zkapp"
   ],
   "type": "module",
